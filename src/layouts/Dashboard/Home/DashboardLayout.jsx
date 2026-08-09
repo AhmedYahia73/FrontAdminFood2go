@@ -1,0 +1,14 @@
+import React from 'react'
+import HomePage from "../../../Pages/Dashboard/Admin/Home/HomePage";
+import { TitlePage } from '../../../Components/Components'
+
+const DashboardLayout = () => {
+       return (
+              <>
+                     {/* <TitlePage text={'Dashboard'} /> */}
+                     <HomePage />
+              </>
+       )
+}
+
+export default DashboardLayout
