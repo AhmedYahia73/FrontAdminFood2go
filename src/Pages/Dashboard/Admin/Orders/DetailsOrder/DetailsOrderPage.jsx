@@ -406,6 +406,10 @@ const DetailsOrderPage = () => {
     if (responseChange && responseChange.status === 200) {
       const orderData = responseChange.data;
 
+      if (orderData?.order_status) {
+        setOrderStatusName(orderData.order_status);
+      }
+
       // Invalidate ALL cached order queries so every list page reflects the new status
       queryClient.invalidateQueries();
       // Also trigger the count refetch so sidebar badges update
