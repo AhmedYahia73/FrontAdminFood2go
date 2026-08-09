@@ -118,6 +118,31 @@ const OrderNotificationHandler = ({ apiUrl, role }) => {
             dispatch(triggerRefresh());
             refetchCountOrders();
             queryClient.invalidateQueries();
+            
+            // FORCE fetch the latest order counts for the navbar immediately to guarantee real-time update
+            const apiUrl = import.meta.env.VITE_API_BASE_URL;
+            const role = localStorage.getItem("role");
+            const token = localStorage.getItem("token") || "";
+            
+            const countUrl =
+                role === "branch"
+                    ? `${apiUrl}/branch/online_order/count`
+                    : `${apiUrl}/admin/order/count`;
+                    
+            fetch(countUrl, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data) {
+                    import('../../Store/CreateSlices').then(slices => {
+                        dispatch(slices.setOrderCounts(data));
+                    });
+                }
+            })
+            .catch(err => console.error("Error fetching order counts on new order:", err));
         }, 500);
 
     }, [dispatch, refetchCountOrders, queryClient]);

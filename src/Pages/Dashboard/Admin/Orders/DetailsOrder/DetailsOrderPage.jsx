@@ -406,8 +406,11 @@ const DetailsOrderPage = () => {
     if (responseChange && responseChange.status === 200) {
       const orderData = responseChange.data;
 
-      if (orderData?.order_status) {
-        setOrderStatusName(orderData.order_status);
+      // The backend may return the updated order_status or we use the local state `orderStatusName` which we will ensure holds the target status.
+      const newStatus = orderData?.order_status || orderStatusName;
+      
+      if (newStatus) {
+        setDetailsData((prev) => ({ ...prev, order_status: newStatus }));
       }
 
       // Invalidate ALL cached order queries so every list page reflects the new status
@@ -415,9 +418,34 @@ const DetailsOrderPage = () => {
       // Also trigger the count refetch so sidebar badges update
       dispatch(triggerRefresh());
 
-      if (orderData?.order_status === "confirmed") {
+      // FORCE fetch the latest order counts for the navbar immediately to guarantee real-time update
+      const countUrl =
+        role === "branch"
+          ? `${apiUrl}/branch/online_order/count`
+          : `${apiUrl}/admin/order/count`;
+          
+      const token = auth?.userState?.token || '';
+      
+      if (token) {
+        fetch(countUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data) {
+            import('../../../../../Store/CreateSlices').then(slices => {
+              dispatch(slices.setOrderCounts(data));
+            });
+          }
+        })
+        .catch(err => console.error("Error fetching order counts:", err));
+      }
+
+      if (newStatus === "confirmed") {
         // 1. نرسل الداتا بالكامل لدالة التجهيز
-        const allPrintData = prepareReceiptData(orderData, t("projectName"));
+        const allPrintData = prepareReceiptData(orderData || detailsData, t("projectName"));
 
         // 2. نستدعي الطباعة ونمرر لها البيانات الجاهزة
         printReceiptSilently(allPrintData, t, () => {
