@@ -255,6 +255,13 @@ const OrderNotificationHandler = ({ apiUrl, role }) => {
         channel.listen('.NewOrderEvent', handleIncomingOrder);
         console.log('🔌 Subscribed to Reverb channel: newOrder | Event: .NewOrderEvent');
 
+        const statusChannel = echo.channel('newstatus');
+        statusChannel.listen('.NewstatusEvent', (e) => {
+            console.log('New status', e.status);
+            dispatch(triggerRefresh());
+        });
+        console.log('🔌 Subscribed to Reverb channel: newstatus | Event: .NewstatusEvent');
+
         const pusher = echo.connector?.pusher;
 
         if (pusher) {
@@ -300,6 +307,8 @@ const OrderNotificationHandler = ({ apiUrl, role }) => {
                 pusher.connection.unbind('unavailable', onDisconnected);
                 channel.stopListening('.NewOrderEvent');
                 echo.leaveChannel('newOrder');
+                statusChannel.stopListening('.NewstatusEvent');
+                echo.leaveChannel('newstatus');
                 stopFallbackPolling();
             };
         } else {
@@ -311,6 +320,8 @@ const OrderNotificationHandler = ({ apiUrl, role }) => {
             return () => {
                 channel.stopListening('.NewOrderEvent');
                 echo.leaveChannel('newOrder');
+                statusChannel.stopListening('.NewstatusEvent');
+                echo.leaveChannel('newstatus');
                 stopFallbackPolling();
             };
         }
