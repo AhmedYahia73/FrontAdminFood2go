@@ -49,6 +49,7 @@ const AddAdminSection = ({ update, setUpdate, dataPositions }) => {
   const [adminImageFile, setAdminImageFile] = useState(null);
 
   const [adminStatus, setAdminStatus] = useState(0);
+  const [showDeletedData, setShowDeletedData] = useState(0);
 
   useEffect(() => {
     setAdminPositions(dataPositions);
@@ -86,6 +87,13 @@ const AddAdminSection = ({ update, setUpdate, dataPositions }) => {
     }
   };
 
+  const handleShowDeletedData = () => {
+    const currentStatus = showDeletedData;
+    {
+      currentStatus === 0 ? setShowDeletedData(1) : setShowDeletedData(0);
+    }
+  };
+
   const handleReset = () => {
     setAdminName("");
     setAdminPhone("");
@@ -99,6 +107,7 @@ const AddAdminSection = ({ update, setUpdate, dataPositions }) => {
     setAdminImageFile(null);
 
     setAdminStatus(0);
+    setShowDeletedData(0);
   };
 
   useEffect(() => {
@@ -122,6 +131,7 @@ const AddAdminSection = ({ update, setUpdate, dataPositions }) => {
 
     formData.append("user_position_id", adminPositionSelected.id);
     formData.append("status", adminStatus);
+    formData.append("show_deleted_data", showDeletedData);
 
     postData(formData, t("Admin Added Success"));
   };
@@ -219,6 +229,14 @@ const AddAdminSection = ({ update, setUpdate, dataPositions }) => {
                 {t("Active")}:
               </span>
               <Switch handleClick={handleAdminStatus} checked={adminStatus} />
+            </div>
+
+            {/* Show Deleted Data */}
+            <div className="xl:w-[30%] flex items-center justify-start mt-4 gap-x-4 ">
+              <span className="text-xl font-TextFontRegular text-thirdColor">
+                {t("Show Deleted Data")}:
+              </span>
+              <Switch handleClick={handleShowDeletedData} checked={showDeletedData} />
             </div>
 
             {/* Buttons */}

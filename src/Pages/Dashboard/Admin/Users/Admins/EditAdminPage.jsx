@@ -58,6 +58,7 @@ const AddAdminSection = () => {
   const [adminImageFile, setAdminImageFile] = useState(null);
 
   const [adminStatus, setAdminStatus] = useState(0);
+  const [showDeletedData, setShowDeletedData] = useState(0);
 
   useEffect(() => {
     refetchAdmin();
@@ -74,6 +75,7 @@ const AddAdminSection = () => {
       setAdminImage(admin?.image_link || "");
       setAdminImageFile(admin?.image_link || null);
       setAdminStatus(admin?.status || 0);
+      setShowDeletedData(admin?.show_deleted_data || 0);
 
       setAdminPositions(positions);
     }
@@ -111,6 +113,13 @@ const AddAdminSection = () => {
     }
   };
 
+  const handleShowDeletedData = () => {
+    const currentStatus = showDeletedData;
+    {
+      currentStatus === 0 ? setShowDeletedData(1) : setShowDeletedData(0);
+    }
+  };
+
   const handleBack = () => {
     navigate(-1, { replace: true });
   };
@@ -135,6 +144,7 @@ const AddAdminSection = () => {
 
     formData.append("user_position_id", adminPositionSelected.id);
     formData.append("status", adminStatus);
+    formData.append("show_deleted_data", showDeletedData);
 
     postData(formData, "Admin Edited Success");
   };
@@ -233,6 +243,14 @@ const AddAdminSection = () => {
                 {t("Active")}:
               </span>
               <Switch handleClick={handleAdminStatus} checked={adminStatus} />
+            </div>
+
+            {/* Show Deleted Data */}
+            <div className="xl:w-[30%] flex items-center justify-start mt-4 gap-x-4 ">
+              <span className="text-xl font-TextFontRegular text-thirdColor">
+                {t("Show Deleted Data")}:
+              </span>
+              <Switch handleClick={handleShowDeletedData} checked={showDeletedData} />
             </div>
 
             {/* Buttons */}

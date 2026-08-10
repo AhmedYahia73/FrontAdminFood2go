@@ -56,10 +56,15 @@ const SelectDateRangeSection = ({ typPage }) => {
         : `${apiUrl}/admin/order/order_filter_date`,
   });
 
+  const { postData: deleteOrders, loadingPost: loadingDelete } = usePost({
+    url: `${apiUrl}/admin/order/delete_orders`,
+  });
+
   const dropDownBranch = useRef();
   const dropDownType = useRef();
   const [isOpenBranch, setIsOpenBranch] = useState(false);
   const [isOpenType, setIsOpenType] = useState(false);
+  const [showDeleteBtn, setShowDeleteBtn] = useState(false);
 
   const [branchs, setBranchs] = useState([]);
   const [startDate, setStartDate] = useState("");
@@ -227,10 +232,31 @@ const SelectDateRangeSection = ({ typPage }) => {
     postData(formData);
   };
 
+  const handleDeleteOrders = (e) => {
+    e.preventDefault();
+    if (!startDate || !endDate) {
+      auth.toastError(t("Please select start and end dates"));
+      return;
+    }
+    if (new Date(endDate) < new Date(startDate)) {
+      auth.toastError(t("End date cannot be before start date"));
+      return;
+    }
+    
+    if (window.confirm(t("Are you sure you want to delete orders in this date range?"))) {
+      const formData = new FormData();
+      formData.set("date", startDate);
+      formData.set("date_to", endDate);
+      deleteOrders(formData, t("Orders deleted successfully"));
+    }
+  };
+
   return (
     <>
-      <TitleSection text={t("SelectDateRange")} />
-      {loadingPost ? (
+      <div onDoubleClick={() => setShowDeleteBtn(!showDeleteBtn)} className="cursor-default select-none">
+        <TitleSection text={t("SelectDateRange")} />
+      </div>
+      {loadingPost || loadingDelete ? (
         <>
           <div className="flex items-center justify-center w-full h-56">
             <StaticLoader />
@@ -300,6 +326,19 @@ const SelectDateRangeSection = ({ typPage }) => {
 
           {/* Buttons*/}
           <div className="flex items-center justify-end w-full gap-x-4">
+            {showDeleteBtn && role === "admin" && (
+              <div className="">
+                <StaticButton
+                  text={t("Delete Orders")}
+                  handleClick={handleDeleteOrders}
+                  bgColor="bg-red-500"
+                  Color="text-white"
+                  border={"border-2"}
+                  borderColor={"border-red-500"}
+                  rounded="rounded-full"
+                />
+              </div>
+            )}
             <div className="">
               <StaticButton
                 text={t("Reset")}
