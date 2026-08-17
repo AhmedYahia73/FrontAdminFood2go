@@ -6,10 +6,11 @@ import HourlySalesBarChart from './Charts/HourlySalesBarChart';
 import TopProductsBarChart from './Charts/TopProductsBarChart';
 import SimplePieChart from './Charts/SimplePieChart';
 
-const ProfessionalDashboard = ({ realData = {} }) => {
+const ProfessionalDashboard = ({ realData }) => {
     // Process real data into charts formatting
     const data = useMemo(() => {
-        const timeSeries = realData.timeSeries || { labels: [], orders: [], netSales: [], netPayments: [], returns: [], discounts: [] };
+        const safeData = realData || {};
+        const timeSeries = safeData.timeSeries || { labels: [], orders: [], netSales: [], netPayments: [], returns: [], discounts: [] };
         
         // Create enriched labels that include order counts for financial charts
         const enrichedFinancialLabels = (timeSeries.labels || []).map((label, index) => {
@@ -18,13 +19,13 @@ const ProfessionalDashboard = ({ realData = {} }) => {
         });
 
         return {
-            kpis: realData.kpis || {},
+            kpis: safeData.kpis || {},
             timeSeries: timeSeries,
-            orderTypes: realData.orderTypes || { labels: [], dineIn: [], delivery: [], takeaway: [] },
-            hourlySales: realData.hourlySales || { labels: [], orders: [] },
-            topProducts: realData.topProducts || { labels: [], values: [] },
-            topPayments: realData.topPayments || { labels: [], values: [] },
-            topBranches: realData.topBranches || { labels: [], values: [] },
+            orderTypes: safeData.orderTypes || { labels: [], dineIn: [], delivery: [], takeaway: [] },
+            hourlySales: safeData.hourlySales || { labels: [], orders: [] },
+            topProducts: safeData.topProducts || { labels: [], values: [] },
+            topPayments: safeData.topPayments || { labels: [], values: [] },
+            topBranches: safeData.topBranches || { labels: [], values: [] },
             enrichedFinancialLabels
         };
     }, [realData]);

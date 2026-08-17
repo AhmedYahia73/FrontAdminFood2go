@@ -255,7 +255,7 @@ const HomePage = () => {
     <>
       <OrdersComponent />
       <div className="flex flex-col w-full mb-0">
-        {(loadingOrders || loadingChart) ? (
+        {(loadingOrders || loadingChart || loadingHomeData) ? (
           <div className="flex items-center justify-center w-full min-h-[400px]">
             <LoaderLogin />
           </div>
