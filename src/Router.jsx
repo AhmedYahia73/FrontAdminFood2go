@@ -89,6 +89,7 @@ const AddHallLocationsLayout = React.lazy(() => import("./layouts/Dashboard/Sett
 import ProtectedLogin from "./ProtectedData/ProtectedLogin";
 import NotFoundPage from "./Pages/NotFoundPage/NotFoundPage";
 import App from "./App";
+import GlobalError from "./Components/GlobalError";
 const AddBranchSection = React.lazy(() => import("./Pages/Dashboard/Admin/Setting/Branches/addBranchSection"));
 const AddFinacialAccountPage = React.lazy(() => import("./Pages/Dashboard/Admin/Setting/FinacialAccount/AddFinacialAccountPage"));
 const AddHallLocations = React.lazy(() => import("./Pages/Dashboard/Admin/Setting/HallLocations/AddHallLocations"));
@@ -292,6 +293,7 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: <ProtectedLogin />,
+    errorElement: <GlobalError />,
     children: [
       {
         path: "",
@@ -304,6 +306,7 @@ export const router = createBrowserRouter([
   {
     path: "/forget_password",
     element: <ProtectedLogin />,
+    errorElement: <GlobalError />,
     children: [
       {
         path: "",
@@ -324,6 +327,7 @@ export const router = createBrowserRouter([
   {
     path: "/branch",
     element: <ProtectedLogin />,
+    errorElement: <GlobalError />,
     children: [
       {
         path: "",
@@ -588,6 +592,7 @@ export const router = createBrowserRouter([
   {
     path: "/dashboard",
     element: <ProtectedLogin />,
+    errorElement: <GlobalError />,
     children: [
       {
         path: "",
