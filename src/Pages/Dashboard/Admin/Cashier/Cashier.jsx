@@ -16,7 +16,7 @@ import { t } from "i18next";
 
 const Cashier = () => {
     const apiUrl = import.meta.env.VITE_API_BASE_URL;
-    const role = localStorage.getItem("role");
+    const role = localStorage.getItem("role") ?? "admin";
 
     const {
         refetch: refetchCashier,
