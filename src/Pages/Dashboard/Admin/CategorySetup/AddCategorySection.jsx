@@ -63,6 +63,8 @@ const AddCategorySection = ({ update, setUpdate }) => {
   const [statusCategory, setStatusCategory] = useState(0);
   const [activeCategory, setActiveCategory] = useState(0);
 
+  const [moduleCategory, setModuleCategory] = useState("all");
+
   const [stateCategoriesParent, setStateCategoriesParent] = useState(
     t("Select Category Parent")
   );
@@ -211,6 +213,7 @@ const AddCategorySection = ({ update, setUpdate }) => {
       setSelectedCategoriesAddons([]);
       setStatusCategory(0);
       setActiveCategory(0);
+      setModuleCategory("all");
     }
     // refetchCategory()
     setUpdate(!update);
@@ -251,6 +254,7 @@ const AddCategorySection = ({ update, setUpdate }) => {
     setSelectedCategoriesAddons([]);
     setStatusCategory(0);
     setActiveCategory(0);
+    setModuleCategory("all");
   };
 
   useEffect(() => {
@@ -328,6 +332,7 @@ const AddCategorySection = ({ update, setUpdate }) => {
     formData.append("app_type", appType);
     formData.append("status", statusCategory);
     formData.append("active", activeCategory);
+    formData.append("module", moduleCategory);
 
     postData(formData, "Category Added Success");
   };
@@ -490,6 +495,22 @@ const AddCategorySection = ({ update, setUpdate }) => {
                               <option value="all">{t("All")}</option>
                               <option value="web">{t("Web")}</option>
                               <option value="app">{t("App")}</option>
+                            </select>
+                          </div>
+
+                          {/* Module */}
+                          <div className="sm:w-full lg:w-[30%] flex flex-col items-start justify-center gap-y-1">
+                            <span className="text-xl font-TextFontRegular text-thirdColor">
+                              {t("Module")}:
+                            </span>
+                            <select
+                              value={moduleCategory}
+                              onChange={(e) => setModuleCategory(e.target.value)}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-thirdColor text-base font-TextFontRegular bg-white focus:outline-none focus:ring-2 focus:ring-mainColor"
+                            >
+                              <option value="all">{t("All")}</option>
+                              <option value="pos">{t("POS")}</option>
+                              <option value="online">{t("Online")}</option>
                             </select>
                           </div>
 
