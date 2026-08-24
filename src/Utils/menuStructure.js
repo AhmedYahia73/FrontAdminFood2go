@@ -379,6 +379,7 @@ export const adminRoutes = [
             { name: "Discount Module", path: "/dashboard/discount_module", permission: "DiscountModule" },
             { name: "Discount Code", path: "/dashboard/discount_code", permission: "DiscountCode" },
             { name: "Free Discount", path: "/dashboard/free_discount", permission: "FreeDiscount" },
+            { name: "Category Log", path: "/dashboard/category_log", permission: "Category" },
         ],
     },
     // --- Other ---

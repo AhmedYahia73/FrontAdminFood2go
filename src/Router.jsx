@@ -57,6 +57,7 @@ const EditCouponLayout = React.lazy(() => import("./layouts/Dashboard/Coupon/Edi
 const BuyOfferLayout = React.lazy(() => import("./layouts/Dashboard/BuyOffer/BuyOfferLayout"));
 const DealsLayout = React.lazy(() => import("./layouts/Dashboard/Deals/DealsLayout"));
 const EditDealLayout = React.lazy(() => import("./layouts/Dashboard/Deals/EditDealLayout"));
+const CategoryLogLayout = React.lazy(() => import("./layouts/Dashboard/CategoryLog/CategoryLogLayout"));
 const AutomaticPaymentLayout = React.lazy(() => import("./layouts/Dashboard/Setting/AutomaticPayment/AutomaticPaymentLayout"));
 const CustomersLayout = React.lazy(() => import("./layouts/Dashboard/Users/Customers/CustomersLayout"));
 const EditCustomersLayout = React.lazy(() => import("./layouts/Dashboard/Users/Customers/EditCustomersLayout"));
@@ -1299,6 +1300,10 @@ export const router = createBrowserRouter([
                 element: <EditDealLayout />,
               },
             ],
+          },
+          {
+            path: "category_log",
+            element: <CategoryLogLayout />,
           },
           {
             path: "offers",
