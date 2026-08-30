@@ -1052,7 +1052,7 @@ const DetailsOrderPage = () => {
                           // Product is a single object → NOT an array
                           const product = orderDetail.product;
                           if (product) {
-                            totalItemPrice += (product.price_after_discount ? product.price_after_discount : product.price_after_tax ? product.price_after_tax : product.price || 0) * (product.count || 1);
+                            totalItemPrice += (product.price_after_discount ? product.price_after_discount : product.price || 0) * (product.count || 1);
                           }
 
                           // Inside your total calculation loop
