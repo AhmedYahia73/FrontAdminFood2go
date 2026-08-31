@@ -87,6 +87,17 @@ const AddProductPage = () => {
   const [selectedUnit, setSelectedUnit] = useState("");
   const [selectedUnitState, setSelectedUnitState] = useState(t("Selected Unit"));
 
+  // States for Product by Time
+  const [productType, setProductType] = useState("food"); // "food" | "time"
+  const [unitTimeHours, setUnitTimeHours] = useState("");
+  const [unitTimeMinutes, setUnitTimeMinutes] = useState("");
+  const [minTimeHours, setMinTimeHours] = useState("");
+  const [minTimeMinutes, setMinTimeMinutes] = useState("");
+  const [extraTime, setExtraTime] = useState(0);
+  const [extraUnitTimeHours, setExtraUnitTimeHours] = useState("");
+  const [extraUnitTimeMinutes, setExtraUnitTimeMinutes] = useState("");
+  const [extraTimePrice, setExtraTimePrice] = useState("");
+
   const [itemTypes, setItemTypes] = useState([]);
   const [stockTypes, setStockTypes] = useState([]);
   const [appTypes, setAppTypes] = useState([]);
@@ -691,6 +702,16 @@ const AddProductPage = () => {
     setWeightPoint("");
     setSelectedUnit("");
     setSelectedUnitState(t("Selected Unit"));
+    // Reset product by time fields
+    setProductType("food");
+    setUnitTimeHours("");
+    setUnitTimeMinutes("");
+    setMinTimeHours("");
+    setMinTimeMinutes("");
+    setExtraTime(0);
+    setExtraUnitTimeHours("");
+    setExtraUnitTimeMinutes("");
+    setExtraTimePrice("");
   };
 
   // Remove an option from a specific Option within a Variation
@@ -793,41 +814,83 @@ const AddProductPage = () => {
       return;
     }
 
+    const isProductTime = productType === "time";
+    const totalUnitTime = (parseInt(unitTimeHours) || 0) * 60 + (parseInt(unitTimeMinutes) || 0);
+
+    if (isProductTime) {
+      if (totalUnitTime <= 0) {
+        auth.toastError(t("UnitTimeRequired"));
+        return;
+      }
+      if (extraTime === 1) {
+        const totalExtraUnitTime = (parseInt(extraUnitTimeHours) || 0) * 60 + (parseInt(extraUnitTimeMinutes) || 0);
+        if (totalExtraUnitTime <= 0) {
+          auth.toastError(t("UnitTimeRequired"));
+          return;
+        }
+        if (extraTimePrice === "" || isNaN(parseFloat(extraTimePrice))) {
+          auth.toastError(t("ExtraTimePriceRequired"));
+          return;
+        }
+      }
+    }
+
     const formData = new FormData();
     formData.append("category_id", selectedCategoryId);
     formData.append("sub_category_id", selectedSubCategoryId);
-    formData.append("item_type", selectedItemTypeName);
-    formData.append("stock_type", selectedStockTypeName);
-    formData.append("app_type", selectedAppTypeName);
     formData.append("number", productStockNumber);
     formData.append("price", productPrice);
     formData.append("discount_id", selectedDiscountId);
     formData.append("tax_id", selectedTaxId);
     formData.append("points", productPoint);
     formData.append("order", productPriority);
+    formData.append("status", productStatus);
+    formData.append("image", productImage);
+
     if (productCode) {
       formData.append("product_code", productCode);
     }
 
-    formData.append("product_time_status", productTimeStatus);
-    if (productStatusFrom) {
-      formData.append("from", productStatusFrom);
+    if (isProductTime) {
+      formData.append("product_time", 1);
+      formData.append("unit_time", totalUnitTime);
+      const totalMinTime = (parseInt(minTimeHours) || 0) * 60 + (parseInt(minTimeMinutes) || 0);
+      formData.append("min_time", totalMinTime);
+      formData.append("extra_time", extraTime);
+      if (extraTime === 1) {
+        const totalExtraUnitTime = (parseInt(extraUnitTimeHours) || 0) * 60 + (parseInt(extraUnitTimeMinutes) || 0);
+        formData.append("extra_unit_time", totalExtraUnitTime);
+        formData.append("extra_time_price", parseFloat(extraTimePrice) || 0);
+      }
+      formData.append("item_type", "offline");
+      formData.append("stock_type", "unlimited");
+      formData.append("app_type", "all");
+      formData.append("recommended", 0);
+      formData.append("recipe", 0);
+      formData.append("product_time_status", 0);
+      formData.append("weight_status", 0);
+    } else {
+      formData.append("product_time", 0);
+      formData.append("item_type", selectedItemTypeName);
+      formData.append("stock_type", selectedStockTypeName);
+      formData.append("app_type", selectedAppTypeName);
+      formData.append("recommended", productRecommended);
+      formData.append("recipe", productRecipe);
+      formData.append("product_time_status", productTimeStatus);
+      if (productStatusFrom) {
+        formData.append("from", productStatusFrom);
+      }
+      if (productStatusTo) {
+        formData.append("to", productStatusTo);
+      }
+      formData.append("weight_status", weightStatus);
+      if (weightStatus === 1) {
+        formData.append("weight_point", weightPoint);
+        formData.append("unit_id", selectedUnit);
+      }
     }
-    if (productStatusTo) {
-      formData.append("to", productStatusTo);
-    }
-    formData.append("recommended", productRecommended);
-    formData.append("status", productStatus);
-    formData.append("recipe", productRecipe);
-    formData.append("image", productImage);
 
-    // Add weight status and related fields
-    formData.append("weight_status", weightStatus);
-    if (weightStatus === 1) {
-      formData.append("weight_point", weightPoint);
-      formData.append("unit_id", selectedUnit);
-    }
-    if (selectedAddonsId.length > 0) {
+    if (!isProductTime && selectedAddonsId.length > 0) {
       const addonIds = selectedAddonsId.map((addon) => addon.id);
       addonIds.forEach((id, indexID) => {
         formData.append(`addons[${indexID}]`, id);
@@ -848,8 +911,8 @@ const AddProductPage = () => {
       })
     }
 
-    // Only include exclude and extra sections if weight_status is not 1
-    if (weightStatus !== 1) {
+    // Only include exclude, extra, variations if not product_time and weight_status is not 1
+    if (!isProductTime && weightStatus !== 1) {
       if (Array.isArray(productExclude)) {
         productExclude.forEach((exclude, index) => {
           if (Array.isArray(exclude.names)) {
@@ -876,7 +939,7 @@ const AddProductPage = () => {
       }
     }
 
-    if (Array.isArray(productVariations)) {
+    if (!isProductTime && Array.isArray(productVariations)) {
       productVariations.forEach((variation, indexVar) => {
 
         /* Names */
@@ -971,6 +1034,156 @@ const AddProductPage = () => {
           className="flex flex-col items-center justify-center w-full gap-5 pb-24"
         >
           <div className="flex flex-col items-start justify-start w-full gap-5">
+            {/* Product Type Selector */}
+            <div className="flex flex-col items-start justify-start w-full gap-3 p-5 bg-white border border-gray-200 shadow-sm rounded-2xl">
+              <span className="text-xl font-TextFontSemiBold text-thirdColor">
+                {t("ProductType")}:
+              </span>
+              <div className="flex flex-wrap items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setProductType("food")}
+                  className={`flex items-center gap-3 px-6 py-3 rounded-xl font-TextFontMedium text-base transition-all duration-200 cursor-pointer ${
+                    productType === "food"
+                      ? "bg-mainColor text-white shadow-md shadow-mainColor/25 scale-[1.02]"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  <span className="text-xl">🍔</span>
+                  <span>{t("FoodProduct")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProductType("time")}
+                  className={`flex items-center gap-3 px-6 py-3 rounded-xl font-TextFontMedium text-base transition-all duration-200 cursor-pointer ${
+                    productType === "time"
+                      ? "bg-mainColor text-white shadow-md shadow-mainColor/25 scale-[1.02]"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  <span className="text-xl">⏱️</span>
+                  <span>{t("ProductByTime")}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Product by Time Configuration Card */}
+            {productType === "time" && (
+              <div className="flex flex-col items-start justify-start w-full gap-6 p-6 border border-blue-100 shadow-sm rounded-2xl bg-gradient-to-br from-blue-50/60 to-indigo-50/40 animate-fadeIn">
+                <div className="flex items-center gap-2 pb-3 border-b border-blue-200/60 w-full">
+                  <span className="text-2xl">⏱️</span>
+                  <span className="text-xl font-TextFontSemiBold text-blue-900">
+                    {t("ProductByTime")} - {t("Configuration") || t("Setting")}
+                  </span>
+                </div>
+
+                <div className="flex items-start justify-start w-full gap-5 sm:flex-col lg:flex-row">
+                  {/* Unit Time (Hours & Minutes) */}
+                  <div className="sm:w-full lg:w-[45%] flex flex-col items-start justify-center gap-y-1">
+                    <span className="text-lg font-TextFontMedium text-gray-800">
+                      {t("UnitTime")} <span className="text-red-500">*</span>:
+                    </span>
+                    <div className="flex items-center w-full gap-3">
+                      <div className="flex-1">
+                        <NumberInput
+                          value={unitTimeHours}
+                          onChange={(e) => setUnitTimeHours(e.target.value)}
+                          placeholder={t("EnterHours") || t("Hours")}
+                        />
+                      </div>
+                      <span className="text-sm font-TextFontMedium text-gray-600">{t("Hours")}</span>
+                      <div className="flex-1">
+                        <NumberInput
+                          value={unitTimeMinutes}
+                          onChange={(e) => setUnitTimeMinutes(e.target.value)}
+                          placeholder={t("EnterMinutes") || t("Minutes")}
+                        />
+                      </div>
+                      <span className="text-sm font-TextFontMedium text-gray-600">{t("Minutes")}</span>
+                    </div>
+                  </div>
+
+                  {/* Min Time (Hours & Minutes) */}
+                  <div className="sm:w-full lg:w-[40%] flex flex-col items-start justify-center gap-y-1">
+                    <span className="text-lg font-TextFontMedium text-gray-800">
+                      {t("MinTime")}:
+                    </span>
+                    <div className="flex items-center w-full gap-3">
+                      <div className="flex-1">
+                        <NumberInput
+                          value={minTimeHours}
+                          onChange={(e) => setMinTimeHours(e.target.value)}
+                          placeholder={t("EnterHours") || t("Hours")}
+                        />
+                      </div>
+                      <span className="text-sm font-TextFontMedium text-gray-600">{t("Hours")}</span>
+                      <div className="flex-1">
+                        <NumberInput
+                          value={minTimeMinutes}
+                          onChange={(e) => setMinTimeMinutes(e.target.value)}
+                          placeholder={t("EnterMinutes") || t("Minutes")}
+                        />
+                      </div>
+                      <span className="text-sm font-TextFontMedium text-gray-600">{t("Minutes")}</span>
+                    </div>
+                  </div>
+
+                  {/* Extra Time Switch */}
+                  <div className="sm:w-full lg:w-[15%] flex flex-col items-start justify-center gap-y-2 lg:mt-1">
+                    <span className="text-lg font-TextFontMedium text-gray-800">
+                      {t("ExtraTime")}:
+                    </span>
+                    <Switch
+                      handleClick={() => setExtraTime(prev => prev === 1 ? 0 : 1)}
+                      checked={extraTime === 1}
+                    />
+                  </div>
+                </div>
+
+                {/* Extra Time Details */}
+                {extraTime === 1 && (
+                  <div className="flex items-start justify-start w-full gap-5 p-5 bg-white border border-blue-200 shadow-inner rounded-xl animate-fadeIn sm:flex-col lg:flex-row">
+                    {/* Extra Unit Time (Hours & Minutes) */}
+                    <div className="sm:w-full lg:w-[45%] flex flex-col items-start justify-center gap-y-1">
+                      <span className="text-lg font-TextFontMedium text-gray-800">
+                        {t("ExtraUnitTime")} <span className="text-red-500">*</span>:
+                      </span>
+                      <div className="flex items-center w-full gap-3">
+                        <div className="flex-1">
+                          <NumberInput
+                            value={extraUnitTimeHours}
+                            onChange={(e) => setExtraUnitTimeHours(e.target.value)}
+                            placeholder={t("EnterHours") || t("Hours")}
+                          />
+                        </div>
+                        <span className="text-sm font-TextFontMedium text-gray-600">{t("Hours")}</span>
+                        <div className="flex-1">
+                          <NumberInput
+                            value={extraUnitTimeMinutes}
+                            onChange={(e) => setExtraUnitTimeMinutes(e.target.value)}
+                            placeholder={t("EnterMinutes") || t("Minutes")}
+                          />
+                        </div>
+                        <span className="text-sm font-TextFontMedium text-gray-600">{t("Minutes")}</span>
+                      </div>
+                    </div>
+
+                    {/* Extra Time Price */}
+                    <div className="sm:w-full lg:w-[35%] flex flex-col items-start justify-center gap-y-1">
+                      <span className="text-lg font-TextFontMedium text-gray-800">
+                        {t("ExtraTimePrice")} <span className="text-red-500">*</span>:
+                      </span>
+                      <NumberInput
+                        value={extraTimePrice}
+                        onChange={(e) => setExtraTimePrice(e.target.value)}
+                        placeholder={t("ExtraTimePrice")}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Product Names && Description */}
             <div className="flex flex-col items-start justify-start w-full gap-4 pb-4 border-b-4 border-gray-300">
               <div className="flex items-center justify-start w-full gap-x-6">
@@ -1050,24 +1263,26 @@ const AddProductPage = () => {
                           />
                         </div>
 
-                        {/* Weight Status Switch */}
-                        <div className="sm:w-full lg:w-[30%] flex items-center justify-start gap-x-3 lg:mt-6">
-                          <span className="text-xl font-TextFontRegular text-thirdColor">
-                            {t("Weight Status")}:
-                          </span>
-                          <Switch
-                            handleClick={handleWeightStatusChange}
-                            checked={weightStatus === 1}
-                          />
-                        </div>
+                        {/* Weight Status Switch (Only for Food Product) */}
+                        {productType === "food" && (
+                          <div className="sm:w-full lg:w-[30%] flex items-center justify-start gap-x-3 lg:mt-6">
+                            <span className="text-xl font-TextFontRegular text-thirdColor">
+                              {t("Weight Status")}:
+                            </span>
+                            <Switch
+                              handleClick={handleWeightStatusChange}
+                              checked={weightStatus === 1}
+                            />
+                          </div>
+                        )}
                       </div>
                     )
                 )}
               </div>
             </div>
 
-            {/* Weight Fields */}
-            {weightStatus === 1 && (
+            {/* Weight Fields (Only for Food Product) */}
+            {productType === "food" && weightStatus === 1 && (
               <div className="flex items-start justify-start w-full gap-5 sm:flex-col lg:flex-row">
                 {/* Weight Point */}
                 <div className="sm:w-full lg:w-[30%] flex flex-col items-start justify-center gap-y-1">
@@ -1101,7 +1316,7 @@ const AddProductPage = () => {
             {/* Product Details */}
             <div className="flex items-start justify-start w-full gap-5 sm:flex-col lg:flex-row">
               {/* Product Category  */}
-              <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
+              <div className={`sm:w-full ${productType === "food" ? "lg:w-[33%]" : "lg:w-[50%]"} flex flex-col items-start justify-center gap-y-1`}>
                 <span className="text-xl font-TextFontRegular text-thirdColor">
                   {t("Category Name")}:
                 </span>
@@ -1116,7 +1331,7 @@ const AddProductPage = () => {
                 />
               </div>
               {/* Product SubCategory  */}
-              <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
+              <div className={`sm:w-full ${productType === "food" ? "lg:w-[33%]" : "lg:w-[50%]"} flex flex-col items-start justify-center gap-y-1`}>
                 <span className="text-xl font-TextFontRegular text-thirdColor">
                   {t("SubCategory Name")}:
                 </span>
@@ -1130,76 +1345,81 @@ const AddProductPage = () => {
                   onSelectOption={handleSelectProductSubCategory}
                 />
               </div>
-              {/* Product Addons  */}
-              <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
-                <span className="text-xl font-TextFontRegular text-thirdColor">
-                  {t("Addons Names")}:
-                </span>
-                <MultiSelect
-                  value={selectedAddonsId}
-                  onChange={(e) => setSelectedAddonsId(e.value)}
-                  options={addons}
-                  optionLabel="name"
-                  display="chip"
-                  placeholder={selectedAddonsState}
-                  maxSelectedLabels={3}
-                  className="w-full bg-white shadow md:w-20rem"
-                />
-              </div>
+              {/* Product Addons (Only for Food Product) */}
+              {productType === "food" && (
+                <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
+                  <span className="text-xl font-TextFontRegular text-thirdColor">
+                    {t("Addons Names")}:
+                  </span>
+                  <MultiSelect
+                    value={selectedAddonsId}
+                    onChange={(e) => setSelectedAddonsId(e.value)}
+                    options={addons}
+                    optionLabel="name"
+                    display="chip"
+                    placeholder={selectedAddonsState}
+                    maxSelectedLabels={3}
+                    className="w-full bg-white shadow md:w-20rem"
+                  />
+                </div>
+              )}
             </div>
 
-            <div className="flex items-start justify-start w-full gap-5 sm:flex-col lg:flex-row">
-              {/* Product Item Type  */}
-              <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
-                <span className="text-xl font-TextFontRegular text-thirdColor">
-                  {t("Item Type")}:
-                </span>
-                <DropDown
-                  ref={itemTypeRef}
-                  handleOpen={handleOpenItemType}
-                  stateoption={selectedItemTypeState}
-                  openMenu={isOPenProductItemType}
-                  handleOpenOption={handleOpenOptionProductItemType}
-                  options={itemTypes}
-                  onSelectOption={handleSelectProductItemType}
-                />
-              </div>
-              {/* Product Stock Type  */}
-              <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
-                <span className="text-xl font-TextFontRegular text-thirdColor">
-                  {t("Stock Type")}:
-                </span>
-                <DropDown
-                  ref={stockTypeRef}
-                  handleOpen={handleOpenStockType}
-                  stateoption={selectedStockTypeState}
-                  openMenu={isOPenProductStockType}
-                  handleOpenOption={handleOpenOptionProductStockType}
-                  options={stockTypes}
-                  onSelectOption={handleSelectProductStockType}
-                />
-              </div>
+            {/* Item Type, Stock Type, App Type (Only for Food Product) */}
+            {productType === "food" && (
+              <div className="flex items-start justify-start w-full gap-5 sm:flex-col lg:flex-row">
+                {/* Product Item Type  */}
+                <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
+                  <span className="text-xl font-TextFontRegular text-thirdColor">
+                    {t("Item Type")}:
+                  </span>
+                  <DropDown
+                    ref={itemTypeRef}
+                    handleOpen={handleOpenItemType}
+                    stateoption={selectedItemTypeState}
+                    openMenu={isOPenProductItemType}
+                    handleOpenOption={handleOpenOptionProductItemType}
+                    options={itemTypes}
+                    onSelectOption={handleSelectProductItemType}
+                  />
+                </div>
+                {/* Product Stock Type  */}
+                <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
+                  <span className="text-xl font-TextFontRegular text-thirdColor">
+                    {t("Stock Type")}:
+                  </span>
+                  <DropDown
+                    ref={stockTypeRef}
+                    handleOpen={handleOpenStockType}
+                    stateoption={selectedStockTypeState}
+                    openMenu={isOPenProductStockType}
+                    handleOpenOption={handleOpenOptionProductStockType}
+                    options={stockTypes}
+                    onSelectOption={handleSelectProductStockType}
+                  />
+                </div>
 
-              {/* App Type */}
-              <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
-                <span className="text-xl font-TextFontRegular text-thirdColor">
-                  {t("App Type")}:
-                </span>
-                <DropDown
-                  ref={appTypeRef}
-                  handleOpen={handleOpenAppType}
-                  stateoption={selectedAppTypeState}
-                  openMenu={isOPenProductAppType}
-                  handleOpenOption={handleOpenOptionProductAppType}
-                  options={appTypes}
-                  onSelectOption={handleSelectProductAppType}
-                />
+                {/* App Type */}
+                <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
+                  <span className="text-xl font-TextFontRegular text-thirdColor">
+                    {t("App Type")}:
+                  </span>
+                  <DropDown
+                    ref={appTypeRef}
+                    handleOpen={handleOpenAppType}
+                    stateoption={selectedAppTypeState}
+                    openMenu={isOPenProductAppType}
+                    handleOpenOption={handleOpenOptionProductAppType}
+                    options={appTypes}
+                    onSelectOption={handleSelectProductAppType}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="flex items-start justify-start w-full gap-5 sm:flex-col lg:flex-row">
-              {selectedStockTypeName === "daily" ||
-                selectedStockTypeName === "fixed" ? (
+              {productType === "food" && (selectedStockTypeName === "daily" ||
+                selectedStockTypeName === "fixed") ? (
                 <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
                   <span className="text-xl font-TextFontRegular text-thirdColor">
                     {t("Number")}:
@@ -1323,66 +1543,70 @@ const AddProductPage = () => {
                   checked={productStatus}
                 />
               </div>
-              {/* Product Product Recommended */}
-              <div className="sm:w-full lg:w-[40%] flex items-center justify-start gap-x-3">
-                <span className="text-xl font-TextFontRegular text-thirdColor">
-                  {t("ProductRecommended")}:
-                </span>
-                <Switch
-                  handleClick={handleProductRecommended}
-                  checked={productRecommended}
-                />
-              </div>
-              {/* Product Recipe */}
-              <div className="sm:w-full lg:w-[20%] flex items-center justify-start gap-x-3">
-                <span className="text-xl font-TextFontRegular text-thirdColor">
-                  {t("Recipe")}:
-                </span>
-                <Switch
-                  handleClick={handleProductRecipe}
-                  checked={productRecipe}
-                />
-              </div>
-              {/* Product Time Status */}
-              <div className="sm:w-full lg:w-[35%] flex items-center justify-start gap-x-3">
-                <span className="text-xl font-TextFontRegular text-thirdColor">
-                  {t("ProductTimeStatus")}:
-                </span>
-                <Switch
-                  handleClick={handleProductTimeStatus}
-                  checked={productTimeStatus}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-start justify-start w-full gap-4 sm:flex-col lg:flex-row">
-              {productTimeStatus === 1 && (
+              {/* Product Recommended, Recipe, Time Status (Only for Food Product) */}
+              {productType === "food" && (
                 <>
-                  <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
+                  <div className="sm:w-full lg:w-[30%] flex items-center justify-start gap-x-3">
                     <span className="text-xl font-TextFontRegular text-thirdColor">
-                      {t("From")}:
+                      {t("ProductRecommended")}:
                     </span>
-                    <TimeInput
-                      value={productStatusFrom ?? ""}
-                      onChange={(e) => setProductStatusFrom(e.target.value)}
+                    <Switch
+                      handleClick={handleProductRecommended}
+                      checked={productRecommended}
                     />
                   </div>
-
-                  <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
+                  <div className="sm:w-full lg:w-[20%] flex items-center justify-start gap-x-3">
                     <span className="text-xl font-TextFontRegular text-thirdColor">
-                      {t("To")}:
+                      {t("Recipe")}:
                     </span>
-                    <TimeInput
-                      value={productStatusTo ?? ""}
-                      onChange={(e) => setProductStatusTo(e.target.value)}
+                    <Switch
+                      handleClick={handleProductRecipe}
+                      checked={productRecipe}
+                    />
+                  </div>
+                  <div className="sm:w-full lg:w-[30%] flex items-center justify-start gap-x-3">
+                    <span className="text-xl font-TextFontRegular text-thirdColor">
+                      {t("ProductTimeStatus")}:
+                    </span>
+                    <Switch
+                      handleClick={handleProductTimeStatus}
+                      checked={productTimeStatus}
                     />
                   </div>
                 </>
               )}
             </div>
 
-            {/* Only show exclude and extra sections if weight_status is not 1 */}
-            {weightStatus !== 1 && (
+            {productType === "food" && (
+              <div className="flex items-start justify-start w-full gap-4 sm:flex-col lg:flex-row">
+                {productTimeStatus === 1 && (
+                  <>
+                    <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
+                      <span className="text-xl font-TextFontRegular text-thirdColor">
+                        {t("From")}:
+                      </span>
+                      <TimeInput
+                        value={productStatusFrom ?? ""}
+                        onChange={(e) => setProductStatusFrom(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="sm:w-full lg:w-[33%] flex flex-col items-start justify-center gap-y-1">
+                      <span className="text-xl font-TextFontRegular text-thirdColor">
+                        {t("To")}:
+                      </span>
+                      <TimeInput
+                        value={productStatusTo ?? ""}
+                        onChange={(e) => setProductStatusTo(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Only show exclude and extra sections if food product and weight_status is not 1 */}
+            {productType === "food" && weightStatus !== 1 && (
               <>
                 {/* Group and Extras Section */}
                 <div className="w-full p-6 shadow-lg bg-gray-50 rounded-2xl">
@@ -1541,9 +1765,10 @@ const AddProductPage = () => {
               </>
             )}
 
-            {/* Product Variations - Always show regardless of weight status */}
-            <div className="flex flex-col items-start justify-start w-full gap-4 pb-4 border-b-4 border-gray-300">
-              {productVariations.length !== 0 && (
+            {/* Product Variations - Only show for food product */}
+            {productType === "food" && (
+              <div className="flex flex-col items-start justify-start w-full gap-4 pb-4 border-b-4 border-gray-300">
+                {productVariations.length !== 0 && (
                 <div className="flex items-center justify-start w-full gap-x-6">
                   {taps.map((tap, index) => (
                     <span
@@ -2025,6 +2250,7 @@ const AddProductPage = () => {
                 )}
               </div>
             </div>
+          )}
           </div>
 
           {/* Buttons*/}

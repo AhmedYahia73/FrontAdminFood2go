@@ -5,6 +5,19 @@ const resources = {
      en: {
           translation: {
                projectName: import.meta.env.VITE_PROJECT_EN_NAME || "Food2go", // Fallback if undefined
+               "ProductType": "Product Type",
+               "FoodProduct": "Food Product",
+               "ProductByTime": "Product by Time",
+               "UnitTime": "Unit Time",
+               "MinTime": "Min Time",
+               "ExtraTime": "Extra Time",
+               "ExtraUnitTime": "Extra Unit Time",
+               "ExtraTimePrice": "Extra Time Price",
+               "MinTimeMinutes": "Min Time (Minutes)",
+               "EnterHours": "Hours",
+               "EnterMinutes": "Minutes",
+               "UnitTimeRequired": "Unit time is required for product by time",
+               "ExtraTimePriceRequired": "Extra time price is required",
                "Order management": "Order management",
                "Dine Orders": "Dine Orders",
                "Captain Orders": "Captain Orders",
@@ -2295,6 +2308,19 @@ const resources = {
 
      ar: {
           translation: {
+               "ProductType": "نوع المنتج",
+               "FoodProduct": "منتج طعام",
+               "ProductByTime": "منتج بالوقت",
+               "UnitTime": "الوقت الأساسي",
+               "MinTime": "الحد الأدنى للوقت",
+               "ExtraTime": "وقت إضافي",
+               "ExtraUnitTime": "وحدة الوقت الإضافي",
+               "ExtraTimePrice": "سعر الوقت الإضافي",
+               "MinTimeMinutes": "الحد الأدنى للوقت (بالدقائق)",
+               "EnterHours": "ساعات",
+               "EnterMinutes": "دقائق",
+               "UnitTimeRequired": "الوقت الأساسي مطلوب للمنتج بالوقت",
+               "ExtraTimePriceRequired": "سعر الوقت الإضافي مطلوب",
                "All": "الكل",
                "Dine Orders": "طلبات الصالة",
                "Captain Orders": "طلبات الكابتن",
