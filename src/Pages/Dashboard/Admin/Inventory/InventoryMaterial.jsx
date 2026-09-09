@@ -20,7 +20,8 @@ import {
     FiCheckCircle,
     FiUpload,
     FiSave,
-    FiArrowLeft
+    FiArrowLeft,
+    FiPrinter,
 } from "react-icons/fi";
 
 // Export Libraries
@@ -29,6 +30,12 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import Papa from "papaparse";
+import {
+    exportHtmlToPdf,
+    printHtml,
+    generateInventoryReportHtml,
+    generateStocksTableHtml,
+} from "../../../../Utils/pdfHelper";
 
 const InventoryMaterial = () => {
     const apiUrl = import.meta.env.VITE_API_BASE_URL;
@@ -72,6 +79,7 @@ const InventoryMaterial = () => {
     const [editingInventoryId, setEditingInventoryId] = useState(null);
     const [inventoryProducts, setInventoryProducts] = useState([]);
     const [editedQuantities, setEditedQuantities] = useState({});
+    const [downloadingPDF, setDownloadingPDF] = useState(false);
 
     // NEW: API for opening inventory details
     const {
@@ -516,32 +524,26 @@ const InventoryMaterial = () => {
             ? stocks
             : stocks.filter((s) => selectedRows.includes(s.id));
 
-    const exportPDF = () => {
+    const exportPDF = async () => {
         const data = getExportData();
-        const doc = new jsPDF("p", "mm", "a4");
-        doc.setFontSize(18);
-        doc.text("Inventory Products Report", 14, 22);
-        doc.setFontSize(11);
-        doc.setTextColor(100);
-        doc.text(`Store: ${selectedStore?.label || "—"}`, 14, 30);
-        doc.text(`Exported: ${data.length} items`, 14, 37);
-
-        autoTable(doc, {
-            head: [["Product", "Category", "Unit", "Quantity", "Actual Qty", "Shortage"]],
-            body: data.map((s) => [
-                s.product || "—",
-                s.category || "—",
-                s.unit || "—",
-                s.quantity,
-                s.actual_quantity,
-                s.inability ?? "—",
-            ]),
-            startY: 45,
-            theme: "grid",
-            headStyles: { fillColor: [59, 130, 246], textColor: 255 },
-        });
-
-        doc.save(`inventory_${selectedStore?.label || "all"}_${new Date().toISOString().split("T")[0]}.pdf`);
+        const isRtl = i18n.language === "ar";
+        try {
+            const html = generateStocksTableHtml({
+                data,
+                storeLabel: selectedStore?.label || "—",
+                isRtl,
+                t,
+            });
+            await exportHtmlToPdf(
+                html,
+                `inventory_${selectedStore?.label || "all"}_${new Date().toISOString().split("T")[0]}.pdf`,
+                isRtl
+            );
+            auth.toastSuccess(t("PDF downloaded successfully"));
+        } catch (error) {
+            console.error("PDF export error:", error);
+            auth.toastError(t("Error generating PDF"));
+        }
     };
 
     const exportExcel = () => {
@@ -590,57 +592,52 @@ const InventoryMaterial = () => {
         );
     }, [inventoryProducts, editedQuantities]);
 
-    // NEW: Export report functions - updated to use modifyProductsResponse
-    const exportReportPDF = () => {
+    // NEW: Export report functions - updated to use exportHtmlToPdf with Arabic & RTL support
+    const exportReportPDF = async () => {
         if (!modifyProductsResponse?.data?.report) return;
 
         const report = modifyProductsResponse.data.report;
         const storeName = modifyProductsResponse.data.store_name || "Unknown Store";
+        const isRtl = i18n.language === "ar";
 
-        const doc = new jsPDF();
+        setDownloadingPDF(true);
+        try {
+            const html = generateInventoryReportHtml({
+                report,
+                storeName,
+                inventoryId: editingInventoryId,
+                isRtl,
+                t,
+            });
+            await exportHtmlToPdf(
+                html,
+                `inventory_report_${editingInventoryId}_${new Date().toISOString().split("T")[0]}.pdf`,
+                isRtl
+            );
+            auth.toastSuccess(t("PDF downloaded successfully"));
+        } catch (error) {
+            console.error("PDF export error:", error);
+            auth.toastError(t("Error generating PDF"));
+        } finally {
+            setDownloadingPDF(false);
+        }
+    };
 
-        // Title
-        doc.setFontSize(16);
-        doc.text(`Inventory Report #${editingInventoryId}`, 14, 20);
-        doc.setFontSize(12);
-        doc.text(`Store: ${storeName}`, 14, 30);
-        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 40);
+    const handlePrintReport = () => {
+        if (!modifyProductsResponse?.data?.report) return;
 
-        // Summary stats
-        const totalProducts = report.length;
-        const totalQuantity = report.reduce((sum, item) => sum + (item.quantity || 0), 0);
-        const totalActualQty = report.reduce((sum, item) => sum + (item.actual_quantity || 0), 0);
-        const totalShortage = report.reduce((sum, item) => sum + (item.inability || 0), 0);
+        const report = modifyProductsResponse.data.report;
+        const storeName = modifyProductsResponse.data.store_name || "Unknown Store";
+        const isRtl = i18n.language === "ar";
 
-        doc.text(`Total Products: ${totalProducts}`, 14, 55);
-        doc.text(`Total Quantity: ${totalQuantity}`, 14, 65);
-        doc.text(`Total Actual Quantity: ${totalActualQty}`, 14, 75);
-        doc.text(`Total Shortage: ${totalShortage}`, 14, 85);
-
-        // Table headers
-        const headers = [["#", "Product", "Category", "Qty", "Actual Qty", "Shortage", "Cost"]];
-
-        // Table data
-        const data = report.map((item, index) => [
-            index + 1,
-            item.product || "—",
-            item.category || "—",
-            item.quantity || 0,
-            item.actual_quantity || 0,
-            item.inability || 0,
-            `${item.cost || 0} EGP`
-        ]);
-
-        // Add table
-        autoTable(doc, {
-            head: headers,
-            body: data,
-            startY: 95,
-            theme: "grid",
-            headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+        const html = generateInventoryReportHtml({
+            report,
+            storeName,
+            inventoryId: editingInventoryId,
+            isRtl,
+            t,
         });
-
-        doc.save(`inventory_report_${editingInventoryId}_${new Date().toISOString().split("T")[0]}.pdf`);
+        printHtml(html, isRtl, `${t("Inventory Report")} #${editingInventoryId}`);
     };
 
     const exportReportCSV = () => {
@@ -1139,14 +1136,26 @@ const InventoryMaterial = () => {
                                         <div className="flex gap-3">
                                             <button
                                                 onClick={exportReportPDF}
-                                                className="p-3 text-white bg-red-600 rounded-full shadow-lg hover:bg-red-700"
-                                                title="PDF"
+                                                disabled={downloadingPDF}
+                                                className="p-3 text-white bg-red-600 rounded-full shadow-lg hover:bg-red-700 disabled:opacity-50 transition-all flex items-center justify-center"
+                                                title={t("Download PDF")}
                                             >
-                                                <FiFileText size={20} />
+                                                {downloadingPDF ? (
+                                                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                                                ) : (
+                                                    <FiFileText size={20} />
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={handlePrintReport}
+                                                className="p-3 text-white bg-gray-700 rounded-full shadow-lg hover:bg-gray-800 transition-all flex items-center justify-center"
+                                                title={t("Print")}
+                                            >
+                                                <FiPrinter size={20} />
                                             </button>
                                             <button
                                                 onClick={exportReportCSV}
-                                                className="p-3 text-white bg-blue-600 rounded-full shadow-lg hover:bg-blue-700"
+                                                className="p-3 text-white bg-blue-600 rounded-full shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center"
                                                 title="CSV"
                                             >
                                                 <FiDownload size={20} />
