@@ -352,8 +352,8 @@ const ProductRow = ({ row, index, products, categories, units, onUpdate, onRemov
     };
 
     return (
-        <div className="relative bg-gradient-to-br from-slate-50 to-blue-50 border border-blue-100 rounded-2xl p-4 shadow-sm group transition-all hover:shadow-md">
-            <div className="absolute -top-3 -left-3 w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shadow-md">
+        <div className="relative bg-gradient-to-br from-white via-rose-50/20 to-rose-50/50 border border-rose-100/80 rounded-2xl p-4 shadow-sm group transition-all hover:shadow-md hover:border-rose-200">
+            <div className="absolute -top-3 -left-3 w-7 h-7 rounded-full bg-gradient-to-br from-red-700 to-rose-600 text-white flex items-center justify-center text-xs font-bold shadow-md shadow-rose-900/20">
                 {index + 1}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
@@ -414,7 +414,7 @@ const ProductRow = ({ row, index, products, categories, units, onUpdate, onRemov
                         placeholder="0.00"
                         min="0.001"
                         step="0.001"
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white transition-all"
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 focus:border-rose-300 bg-white transition-all"
                     />
                 </div>
             </div>
@@ -422,10 +422,10 @@ const ProductRow = ({ row, index, products, categories, units, onUpdate, onRemov
                 <button
                     type="button"
                     onClick={() => onRemove(row._id)}
-                    className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 transition-all text-lg font-bold leading-none"
+                    className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-rose-50 text-rose-400 hover:bg-rose-100 hover:text-rose-700 transition-all text-sm font-bold leading-none"
                     title={t("Remove")}
                 >
-                    Ã—
+                    <FiX size={15} />
                 </button>
             )}
         </div>
@@ -606,11 +606,11 @@ const StockTransfer = () => {
             border: '1px solid #E2E8F0',
             borderRadius: '0.75rem',
             padding: '0.1rem 0.25rem',
-            boxShadow: state.isFocused ? '0 0 0 3px rgba(59,130,246,0.15)' : 'none',
-            borderColor: state.isFocused ? '#3B82F6' : '#E2E8F0',
+            boxShadow: state.isFocused ? '0 0 0 3px rgba(225,29,72,0.15)' : 'none',
+            borderColor: state.isFocused ? '#e11d48' : '#E2E8F0',
             backgroundColor: '#fff',
             fontSize: '0.875rem',
-            '&:hover': { borderColor: '#94A3B8' },
+            '&:hover': { borderColor: '#fda4af' },
         }),
         menuPortal: (base) => ({ ...base, zIndex: 9999 }),
     };
@@ -650,25 +650,28 @@ const StockTransfer = () => {
                             <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
                                 style={{ maxHeight: '90vh' }}>
 
-                                <div className="bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 px-6 py-5 flex items-center justify-between flex-shrink-0">
+                                <div className="bg-gradient-to-r from-red-950 via-rose-900 to-rose-800 px-6 py-5 flex items-center justify-between flex-shrink-0">
                                     <div>
+                                        <div className="inline-block bg-white/15 px-2.5 py-0.5 rounded-full text-[11px] font-semibold text-rose-200 uppercase tracking-wider mb-1">
+                                            {t("Inventory Management")}
+                                        </div>
                                         <h2 className="text-white text-xl font-bold tracking-wide">{t("Stock Transfer")}</h2>
-                                        <p className="text-blue-100 text-sm mt-0.5">{t("Transfer products between stores")}</p>
+                                        <p className="text-rose-100/90 text-sm mt-0.5">{t("Transfer products between stores")}</p>
                                     </div>
                                     <button
                                         onClick={closeDialog}
-                                        className="w-9 h-9 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30 transition-all text-xl font-bold leading-none"
+                                        className="w-9 h-9 flex items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25 transition-all"
                                     >
-                                        Ã—
+                                        <FiX size={20} />
                                     </button>
                                 </div>
 
                                 <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                                     <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
-                                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
-                                            <h3 className="text-sm font-bold text-blue-800 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                                <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                                        <div className="bg-gradient-to-br from-rose-50/70 via-rose-50/30 to-white rounded-2xl p-4 border border-rose-100 shadow-sm">
+                                            <h3 className="text-sm font-bold text-rose-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                <span className="w-2 h-2 rounded-full bg-rose-600 inline-block"></span>
                                                 {t("Transfer Route")}
                                             </h3>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -711,17 +714,17 @@ const StockTransfer = () => {
 
                                         <div>
                                             <div className="flex items-center justify-between mb-3">
-                                                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                                                    <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span>
+                                                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-rose-600 inline-block"></span>
                                                     {t("Products")}
-                                                    <span className="ml-1 px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">
+                                                    <span className="ml-1 px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-xs font-bold">
                                                         {productRows.length}
                                                     </span>
                                                 </h3>
                                                 <button
                                                     type="button"
                                                     onClick={handleAddRow}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:scale-95 transition-all shadow-sm"
+                                                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-sm font-semibold active:scale-95 transition-all shadow-sm shadow-rose-200"
                                                 >
                                                     <span className="text-lg leading-none">+</span>
                                                     {t("Add Product")}

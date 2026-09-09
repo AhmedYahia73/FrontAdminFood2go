@@ -90,13 +90,13 @@ const InventoryMaterial = () => {
         url: editingInventoryId ? `${apiUrl}/admin/inventory/material/open_inventory/${editingInventoryId}` : null,
     });
 
-    // NEW: API for modifying products
+    // NEW: API for modifying materials
     const {
         postData: modifyProducts,
         loading: loadingModifyProducts,
         response: modifyProductsResponse
     } = usePost({
-        url: editingInventoryId ? `${apiUrl}/admin/inventory/material/modify_products/${editingInventoryId}` : null,
+        url: editingInventoryId ? `${apiUrl}/admin/inventory/material/modify_materials/${editingInventoryId}` : null,
     });
 
     // NEW: API for inability list
