@@ -1,8 +1,18 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
-  RewriteRule ^index\.html$ - [L]
+
+  # 1. تجاهل مجلد point-of-sale تماماً عشان يشتغل بالـ htaccess الخاص بيه
+  RewriteRule ^point-of-sale - [L]
+
+  # 2. توجيه أي طلب (ما عدا اللي فوق) لمجلد dist المخفي
+  RewriteCond %{REQUEST_URI} !^/dist/
+  RewriteRule ^(.*)$ dist/$1 [L]
+
+  # 3. إعدادات React Router للمشروع الرئيسي (Fallback)
+  # لو الطلب جوه dist بس الملف مش موجود، وجهه لـ index.html بتاع الـ dist
+  RewriteCond %{REQUEST_URI} ^/dist/
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
+  RewriteRule ^(.*)$ dist/index.html [L]
 </IfModule>
