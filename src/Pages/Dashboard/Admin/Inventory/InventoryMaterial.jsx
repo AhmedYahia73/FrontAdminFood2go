@@ -225,20 +225,31 @@ const InventoryMaterial = () => {
         setEditingInventoryId(inventoryId);
     };
 
-    // NEW: Load inventory products when data is fetched
+    // NEW: Load inventory products/materials when data is fetched
     useEffect(() => {
-        if (openInventoryData?.products) {
-            setInventoryProducts(openInventoryData.products.map((product, index) => ({
-                ...product,
-                id: index, // Create a temporary ID for editing
-                originalQuantity: product.quantity,
-                editedQuantity: product.quantity
-            })));
+        const rawMaterials = openInventoryData?.materials || openInventoryData?.products || (Array.isArray(openInventoryData) ? openInventoryData : null);
+        if (rawMaterials && Array.isArray(rawMaterials)) {
+            setInventoryProducts(rawMaterials.map((product, index) => {
+                const actualQty = product.actual_quantity !== undefined && product.actual_quantity !== null
+                    ? product.actual_quantity
+                    : product.quantity;
+                return {
+                    ...product,
+                    id: index, // Create a temporary ID for editing
+                    material_id: product.material_id || product.id,
+                    product_id: product.material_id || product.product_id || product.id,
+                    originalQuantity: product.quantity,
+                    actual_quantity: actualQty,
+                    editedQuantity: actualQty
+                };
+            }));
 
-            // Initialize edited quantities
+            // Initialize edited quantities with actual_quantity
             const initialQuantities = {};
-            openInventoryData.products.forEach((product, index) => {
-                initialQuantities[index] = product.quantity;
+            rawMaterials.forEach((product, index) => {
+                initialQuantities[index] = product.actual_quantity !== undefined && product.actual_quantity !== null
+                    ? product.actual_quantity
+                    : product.quantity;
             });
             setEditedQuantities(initialQuantities);
         }
@@ -273,7 +284,9 @@ const InventoryMaterial = () => {
         const payload = {};
 
         inventoryProducts.forEach((product, index) => {
-            payload[`materials[${index}][id]`] = product.product_id;
+            const id = product.material_id || product.product_id || product.id;
+            payload[`materials[${index}][id]`] = id;
+            payload[`materials[${index}][actual_quantity]`] = editedQuantities[index];
             payload[`materials[${index}][quantity]`] = editedQuantities[index];
         });
 
@@ -296,8 +309,12 @@ const InventoryMaterial = () => {
 
     // NEW: Load shortage list when data is fetched
     useEffect(() => {
-        if (inabilityListData?.shourtage_list) {
-            setShortageList(inabilityListData.shourtage_list);
+        const list = Array.isArray(inabilityListData)
+            ? inabilityListData
+            : (inabilityListData?.shourtage_list || inabilityListData?.shortage_list || inabilityListData?.data || null);
+
+        if (list && Array.isArray(list)) {
+            setShortageList(list);
 
             // Initialize selected shortages
             setSelectedShortages([]);
@@ -306,7 +323,7 @@ const InventoryMaterial = () => {
             // Initialize edited shortages and reasons
             const initialShortages = {};
             const initialReasons = {};
-            inabilityListData.shourtage_list.forEach((item, index) => {
+            list.forEach((item, index) => {
                 initialShortages[index] = item.inability || 0;
                 initialReasons[index] = item.reason || "";
             });
@@ -588,7 +605,7 @@ const InventoryMaterial = () => {
     // Check if any quantities have been changed
     const hasQuantityChanges = useMemo(() => {
         return inventoryProducts.some((product, index) =>
-            editedQuantities[index] !== product.originalQuantity
+            editedQuantities[index] !== (product.actual_quantity !== undefined && product.actual_quantity !== null ? product.actual_quantity : product.originalQuantity)
         );
     }, [inventoryProducts, editedQuantities]);
 
@@ -659,20 +676,20 @@ const InventoryMaterial = () => {
             ["Generated", new Date().toLocaleDateString()],
             [],
             ["Summary"],
-            ["Total Products", totalProducts],
+            ["Total Materials", totalProducts],
             ["Total Quantity", totalQuantity],
             ["Total Actual Quantity", totalActualQty],
             ["Total Shortage", totalShortage],
             [],
-            ["Detailed Products"],
-            ["#", "Product", "Category", "Quantity", "Actual Quantity", "Shortage", "Cost", "Date"]
+            ["Detailed Materials"],
+            ["#", "Material", "Category", "Quantity", "Actual Quantity", "Shortage", "Cost", "Date"]
         ];
 
-        // Add product details
+        // Add material details
         report.forEach((item, index) => {
             csvData.push([
                 index + 1,
-                item.product || "",
+                item.material || item.product || "",
                 item.category || "",
                 item.quantity || 0,
                 item.actual_quantity || 0,
@@ -1018,7 +1035,7 @@ const InventoryMaterial = () => {
                                                     </th>
                                                     
                                                     <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
-                                                        {t("Product")}
+                                                        {t("Material")}
                                                     </th>
                                                     <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
                                                         {t("Category")}
@@ -1051,7 +1068,7 @@ const InventoryMaterial = () => {
                                                                 />
                                                             </td>
                                                             <td className="px-6 py-5 font-medium text-gray-900">
-                                                                {item.product || "—"}
+                                                                {item.material || item.product || "—"}
                                                             </td>
                                                             <td className="px-6 py-5 text-gray-600">
                                                                 {item.category || "—"}
@@ -1173,7 +1190,7 @@ const InventoryMaterial = () => {
                                             {/* Summary Stats */}
                                             <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
                                                 <div className="p-4 border border-blue-100 rounded-lg bg-blue-50">
-                                                    <div className="text-sm font-medium text-blue-600">{t("Total Products")}</div>
+                                                    <div className="text-sm font-medium text-blue-600">{t("Total Materials")}</div>
                                                     <div className="mt-1 text-2xl font-bold text-blue-800">
                                                         {modifyProductsResponse.data.report.length}
                                                     </div>
@@ -1215,7 +1232,7 @@ const InventoryMaterial = () => {
                                                                 {t("#")}
                                                             </th>
                                                           <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
-                                                                {t("Product")}
+                                                                {t("Material")}
                                                             </th>  
                                                             <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
                                                                 {t("Category")}
@@ -1244,7 +1261,7 @@ const InventoryMaterial = () => {
                                                                     {index + 1}
                                                                 </td>
                                                                 <td className="px-6 py-5 font-medium text-gray-900">
-                                                                    {item.product || "—"}
+                                                                    {item.material || item.product || "—"}
                                                                 </td>
                                                                 <td className="px-6 py-5 text-gray-600">
                                                                     {item.category || "—"}
@@ -1374,7 +1391,7 @@ const InventoryMaterial = () => {
                                 </div>
                             ) : inventoryProducts.length === 0 ? (
                                 <div className="py-20 text-xl text-center text-gray-500 bg-gray-50 rounded-2xl">
-                                    {t("No products found in this inventory")}
+                                    {t("No materials found in this inventory")}
                                 </div>
                             ) : (
                                 <div className="overflow-hidden bg-white shadow-lg rounded-2xl">
@@ -1386,7 +1403,7 @@ const InventoryMaterial = () => {
                                                         {t("Category")}
                                                     </th>
                                                     <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
-                                                        {t("Product")}
+                                                        {t("Material")}
                                                     </th>
                                                     <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
                                                         {t("Original Quantity")}
@@ -1409,7 +1426,7 @@ const InventoryMaterial = () => {
                                                             {product.category || "—"}
                                                         </td>
                                                         <td className="px-6 py-5 font-medium text-gray-900">
-                                                            {product.product || "—"}
+                                                            {product.material || product.product || "—"}
                                                         </td>
                                                         <td className="px-6 py-5 text-gray-600">
                                                             {product.originalQuantity || 0}
@@ -1417,7 +1434,7 @@ const InventoryMaterial = () => {
                                                         <td className="px-6 py-5">
                                                             <input
                                                                 type="number"
-                                                                value={editedQuantities[index] || product.quantity || 0}
+                                                                value={editedQuantities[index] ?? product.actual_quantity ?? product.quantity ?? 0}
                                                                 onChange={(e) => handleInventoryQuantityChange(index, e.target.value)}
                                                                 className="w-32 px-3 py-2 font-medium text-center transition border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                                             />

@@ -181,7 +181,7 @@ export const generateInventoryReportHtml = ({ report = [], storeName = "—", in
                     <tr style="background-color: #2563eb; color: #ffffff;">
                         <th style="padding: 10px 12px; font-weight: 700; width: 40px; text-align: center; border: 1px solid #1d4ed8;">#</th>
                         <th style="padding: 10px 12px; font-weight: 700; border: 1px solid #1d4ed8;">${t("Category")}</th>
-                        <th style="padding: 10px 12px; font-weight: 700; border: 1px solid #1d4ed8;">${t("Product")}</th>
+                        <th style="padding: 10px 12px; font-weight: 700; border: 1px solid #1d4ed8;">${report.some(r => r.material) ? t("Material") : t("Product")}</th>
                         <th style="padding: 10px 12px; font-weight: 700; text-align: center; border: 1px solid #1d4ed8;">${t("Quantity")}</th>
                         <th style="padding: 10px 12px; font-weight: 700; text-align: center; border: 1px solid #1d4ed8;">${t("Actual Quantity")}</th>
                         <th style="padding: 10px 12px; font-weight: 700; text-align: center; border: 1px solid #1d4ed8;">${t("Shortage")}</th>
@@ -196,7 +196,7 @@ export const generateInventoryReportHtml = ({ report = [], storeName = "—", in
                             <tr style="background-color: ${index % 2 === 0 ? '#ffffff' : '#f9fafb'};">
                                 <td style="padding: 9px 12px; text-align: center; color: #6b7280; border: 1px solid #e5e7eb;">${index + 1}</td>
                                 <td style="padding: 9px 12px; color: #4b5563; border: 1px solid #e5e7eb;">${item.category || "—"}</td>
-                                <td style="padding: 9px 12px; font-weight: 600; color: #111827; border: 1px solid #e5e7eb;">${item.product || "—"}</td>
+                                <td style="padding: 9px 12px; font-weight: 600; color: #111827; border: 1px solid #e5e7eb;">${item.material || item.product || "—"}</td>
                                 <td style="padding: 9px 12px; text-align: center; color: #374151; border: 1px solid #e5e7eb;">${item.quantity ?? 0}</td>
                                 <td style="padding: 9px 12px; text-align: center; color: #374151; border: 1px solid #e5e7eb;">${item.actual_quantity ?? 0}</td>
                                 <td style="padding: 9px 12px; text-align: center; font-weight: 700; color: ${inabilityColor}; border: 1px solid #e5e7eb;">
@@ -256,7 +256,7 @@ export const generateStocksTableHtml = ({ data = [], storeLabel = "—", isRtl =
                 <thead>
                     <tr style="background-color: #2563eb; color: #ffffff;">
                         <th style="padding: 10px 12px; font-weight: 700; width: 40px; text-align: center; border: 1px solid #1d4ed8;">#</th>
-                        <th style="padding: 10px 12px; font-weight: 700; border: 1px solid #1d4ed8;">${t("Product")}</th>
+                        <th style="padding: 10px 12px; font-weight: 700; border: 1px solid #1d4ed8;">${data.some(r => r.material) ? t("Material") : t("Product")}</th>
                         <th style="padding: 10px 12px; font-weight: 700; border: 1px solid #1d4ed8;">${t("Category")}</th>
                         <th style="padding: 10px 12px; font-weight: 700; border: 1px solid #1d4ed8;">${t("Unit")}</th>
                         <th style="padding: 10px 12px; font-weight: 700; text-align: center; border: 1px solid #1d4ed8;">${t("Quantity")}</th>
@@ -268,7 +268,7 @@ export const generateStocksTableHtml = ({ data = [], storeLabel = "—", isRtl =
                     ${data.map((item, index) => `
                         <tr style="background-color: ${index % 2 === 0 ? '#ffffff' : '#f9fafb'};">
                             <td style="padding: 9px 12px; text-align: center; color: #6b7280; border: 1px solid #e5e7eb;">${index + 1}</td>
-                            <td style="padding: 9px 12px; font-weight: 600; color: #111827; border: 1px solid #e5e7eb;">${item.product || "—"}</td>
+                            <td style="padding: 9px 12px; font-weight: 600; color: #111827; border: 1px solid #e5e7eb;">${item.material || item.product || "—"}</td>
                             <td style="padding: 9px 12px; color: #4b5563; border: 1px solid #e5e7eb;">${item.category || "—"}</td>
                             <td style="padding: 9px 12px; color: #4b5563; border: 1px solid #e5e7eb;">${item.unit || "—"}</td>
                             <td style="padding: 9px 12px; text-align: center; color: #374151; border: 1px solid #e5e7eb;">${item.quantity ?? 0}</td>

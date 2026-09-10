@@ -245,17 +245,26 @@ const InventoryProduct = () => {
     // NEW: Load inventory products when data is fetched
     useEffect(() => {
         if (openInventoryData?.products) {
-            setInventoryProducts(openInventoryData.products.map((product, index) => ({
-                ...product,
-                id: index, // Create a temporary ID for editing
-                originalQuantity: product.quantity,
-                editedQuantity: product.quantity
-            })));
+            setInventoryProducts(openInventoryData.products.map((product, index) => {
+                const actualQty = product.actual_quantity !== undefined && product.actual_quantity !== null
+                    ? product.actual_quantity
+                    : product.quantity;
+                return {
+                    ...product,
+                    id: index, // Create a temporary ID for editing
+                    product_id: product.product_id || product.id,
+                    originalQuantity: product.quantity,
+                    actual_quantity: actualQty,
+                    editedQuantity: actualQty
+                };
+            }));
 
-            // Initialize edited quantities
+            // Initialize edited quantities with actual_quantity
             const initialQuantities = {};
             openInventoryData.products.forEach((product, index) => {
-                initialQuantities[index] = product.quantity;
+                initialQuantities[index] = product.actual_quantity !== undefined && product.actual_quantity !== null
+                    ? product.actual_quantity
+                    : product.quantity;
             });
             setEditedQuantities(initialQuantities);
         }
@@ -270,7 +279,7 @@ const InventoryProduct = () => {
 
         // Update the inventoryProducts array
         setInventoryProducts(prev => prev.map((product, i) =>
-            i === index ? { ...product, editedQuantity: value } : product
+            i === index ? { ...product, editedQuantity: value, actual_quantity: value } : product
         ));
     };
 
@@ -290,7 +299,9 @@ const InventoryProduct = () => {
         const payload = {};
 
         inventoryProducts.forEach((product, index) => {
-            payload[`products[${index}][id]`] = product.product_id;
+            const id = product.product_id || product.id;
+            payload[`products[${index}][id]`] = id;
+            payload[`products[${index}][actual_quantity]`] = editedQuantities[index];
             payload[`products[${index}][quantity]`] = editedQuantities[index];
         });
 
@@ -313,8 +324,11 @@ const InventoryProduct = () => {
 
     // NEW: Load shortage list when data is fetched
     useEffect(() => {
-        if (inabilityListData?.shourtage_list) {
-            setShortageList(inabilityListData.shourtage_list);
+        if (inabilityListData) {
+            const list = Array.isArray(inabilityListData)
+                ? inabilityListData
+                : (inabilityListData?.shourtage_list || inabilityListData?.shortage_list || inabilityListData?.data || []);
+            setShortageList(list);
 
             // Initialize selected shortages
             setSelectedShortages([]);
@@ -323,7 +337,7 @@ const InventoryProduct = () => {
             // Initialize edited shortages and reasons
             const initialShortages = {};
             const initialReasons = {};
-            inabilityListData.shourtage_list.forEach((item, index) => {
+            list.forEach((item, index) => {
                 initialShortages[index] = item.inability || 0;
                 initialReasons[index] = item.reason || "";
             });
@@ -735,7 +749,7 @@ const InventoryProduct = () => {
     // Check if any quantities have been changed
     const hasQuantityChanges = useMemo(() => {
         return inventoryProducts.some((product, index) =>
-            editedQuantities[index] !== product.originalQuantity
+            editedQuantities[index] !== (product.actual_quantity !== undefined && product.actual_quantity !== null ? product.actual_quantity : product.originalQuantity)
         );
     }, [inventoryProducts, editedQuantities]);
 
@@ -1563,7 +1577,7 @@ const InventoryProduct = () => {
                                                         <td className="px-6 py-5">
                                                             <input
                                                                 type="number"
-                                                                value={editedQuantities[index] || product.quantity || 0}
+                                                                value={editedQuantities[index] ?? product.actual_quantity ?? product.quantity ?? 0}
                                                                 onChange={(e) => handleInventoryQuantityChange(index, e.target.value)}
                                                                 className="w-32 px-3 py-2 font-medium text-center transition border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                                             />
