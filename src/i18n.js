@@ -6,6 +6,7 @@ const resources = {
           translation: {
                projectName: import.meta.env.VITE_PROJECT_EN_NAME || "Food2go", // Fallback if undefined
                "ProductType": "Product Type",
+               "Supplier": "Supplier",
                "Product Movement": "Product Movement",
                "FoodProduct": "Food Product",
                "ProductByTime": "Product by Time",
@@ -2354,6 +2355,7 @@ const resources = {
 
      ar: {
           translation: {
+               "Supplier": "الموردين",
                "Product Movement": "حركة المنتجات",
                "ProductType": "نوع المنتج",
                "FoodProduct": "منتج طعام",
