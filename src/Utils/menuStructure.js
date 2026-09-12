@@ -17,7 +17,7 @@ import {
     MdDeliveryDining as MdDeliveryDiningIcon,
     MdTableRestaurant
 } from "react-icons/md";
-import { TbCategory, TbReportSearch, TbBasketDiscount, TbBorderAll, TbSocial } from "react-icons/tb";
+import { TbCategory, TbReportSearch, TbBasketDiscount, TbBorderAll, TbSocial, TbTruckDelivery } from "react-icons/tb";
 import { FiPackage, FiUsers } from "react-icons/fi";
 import { PiFlagBanner, PiBaseballCap, PiClockUserFill, PiSlideshowFill } from "react-icons/pi";
 import { HiReceiptTax } from "react-icons/hi";
@@ -147,6 +147,12 @@ export const adminRoutes = [
     },
     // --- Inventory & Supply chain ---
     {
+        name: "Supplier",
+        path: "/dashboard/supplier",
+        permission: "Stock",
+        icon: TbTruckDelivery,
+    },
+    {
         name: "Stock",
         path: "/dashboard/stock",
         permission: "Stock",
@@ -158,7 +164,7 @@ export const adminRoutes = [
         redirectTo: "/dashboard/stock/stock_list",
     },
     {
-        name: "Transfer Stock",
+        name: "Product Movement",
         path: "/dashboard/stock_transfer",
         permission: "Stock",
         icon: RiExchange2Fill,
@@ -578,8 +584,9 @@ export const ADMIN_MENU_CATEGORIES = [
         description: "Manage stock, inventory, and manufacturing",
         icon: FaShoppingBasket,
         routes: [
+            "Supplier",
             "Stock",
-            "Transfer Stock",
+            "Product Movement",
             "Inventory",
             "Manufacturing",
             "Purchase",

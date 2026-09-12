@@ -202,6 +202,9 @@ const LanguageSystem = React.lazy(() => import("./Pages/Dashboard/Admin/Setting/
 const Store = React.lazy(() => import("./Pages/Dashboard/Admin/Store/Store"));
 const AddStore = React.lazy(() => import("./Pages/Dashboard/Admin/Store/AddStore"));
 const EditStore = React.lazy(() => import("./Pages/Dashboard/Admin/Store/EditStore"));
+const Supplier = React.lazy(() => import("./Pages/Dashboard/Admin/Supplier/Supplier"));
+const AddSupplier = React.lazy(() => import("./Pages/Dashboard/Admin/Supplier/AddSupplier"));
+const EditSupplier = React.lazy(() => import("./Pages/Dashboard/Admin/Supplier/EditSupplier"));
 const StoreMan = React.lazy(() => import("./Pages/Dashboard/Admin/StoreMan/StoreMan"));
 const AddStoreMan = React.lazy(() => import("./Pages/Dashboard/Admin/StoreMan/AddStoreMan"));
 const EditStoreMan = React.lazy(() => import("./Pages/Dashboard/Admin/StoreMan/EditStoreMan"));
@@ -1800,6 +1803,25 @@ export const router = createBrowserRouter([
                     element: <AddManufacturing />,
                   },
                 ],
+              },
+            ],
+          },
+
+          {
+            path: "supplier",
+            element: <Outlet />,
+            children: [
+              {
+                index: true,
+                element: <Supplier />,
+              },
+              {
+                path: "add",
+                element: <AddSupplier />,
+              },
+              {
+                path: "edit/:supplierId",
+                element: <EditSupplier />,
               },
             ],
           },

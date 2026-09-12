@@ -19,7 +19,8 @@ import {
     FiCheckCircle,
     FiUpload,
     FiSave,
-    FiArrowLeft
+    FiArrowLeft,
+    FiEye
 } from "react-icons/fi";
 
 // Export Libraries
@@ -112,6 +113,15 @@ const InventoryProduct = () => {
         refetch: refetchInabilityList
     } = useGet({
         url: editingInventoryId && finalizingInventory ? `${apiUrl}/admin/inventory/product/inability_list/${editingInventoryId}` : null,
+    });
+
+    // NEW: History Inventory Details State & Hook
+    const [selectedHistoryInventory, setSelectedHistoryInventory] = useState(null);
+    const {
+        data: historyDetailsData,
+        loading: loadingHistoryDetails,
+    } = useGet({
+        url: selectedHistoryInventory ? `${apiUrl}/admin/inventory/product/inability_list/${selectedHistoryInventory.id}` : null,
     });
 
     // NEW: API for updating shortages
@@ -850,6 +860,60 @@ const InventoryProduct = () => {
         }
     };
 
+    // Export functions for history details
+    const exportHistoryDetailsPDF = () => {
+        if (!historyDetailsData?.shourtage_list || !selectedHistoryInventory) return;
+
+        const data = historyDetailsData.shourtage_list;
+        const doc = new jsPDF("p", "mm", "a4");
+
+        doc.setFontSize(16);
+        doc.text(`Inventory Details #${selectedHistoryInventory.id}`, 14, 20);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Store: ${selectedHistoryInventory.store || "—"}`, 14, 28);
+        doc.text(`Date: ${selectedHistoryInventory.date ? formatDate(selectedHistoryInventory.date) : "—"}`, 14, 35);
+        doc.text(`Status: ${selectedHistoryInventory.status || "—"}`, 14, 42);
+
+        autoTable(doc, {
+            head: [["#", "Product", "Category", "Quantity", "Actual Qty", "Shortage", "Cost"]],
+            body: data.map((item, idx) => [
+                idx + 1,
+                item.product || "—",
+                item.category || "—",
+                item.quantity ?? 0,
+                item.actual_quantity ?? 0,
+                item.inability ?? 0,
+                `${item.cost || 0} EGP`
+            ]),
+            startY: 48,
+            theme: "grid",
+            headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+        });
+
+        doc.save(`inventory_details_${selectedHistoryInventory.id}_${new Date().toISOString().split("T")[0]}.pdf`);
+    };
+
+    const exportHistoryDetailsExcel = () => {
+        if (!historyDetailsData?.shourtage_list || !selectedHistoryInventory) return;
+
+        const data = historyDetailsData.shourtage_list;
+        const ws = XLSX.utils.json_to_sheet(
+            data.map((item, idx) => ({
+                "#": idx + 1,
+                "Product": item.product || "—",
+                "Category": item.category || "—",
+                "Quantity": item.quantity ?? 0,
+                "Actual Qty": item.actual_quantity ?? 0,
+                "Shortage": item.inability ?? 0,
+                "Cost": item.cost ?? 0,
+            }))
+        );
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "InventoryDetails");
+        XLSX.writeFile(wb, `inventory_details_${selectedHistoryInventory.id}_${new Date().toISOString().split("T")[0]}.xlsx`);
+    };
+
     return (
         <div className="w-full p-6 pb-20">
             <TitlePage text={t("Inventory Products")} />
@@ -868,13 +932,19 @@ const InventoryProduct = () => {
             {/* Tabs */}
             <div className="flex gap-8 mb-10 border-b-2 border-gray-200">
                 <button
-                    onClick={() => setActiveTab("current")}
+                    onClick={() => {
+                        setActiveTab("current");
+                        setSelectedHistoryInventory(null);
+                    }}
                     className={`flex items-center gap-3 pb-4 text-lg font-semibold ${activeTab === "current" ? "text-mainColor border-b-4 border-mainColor" : "text-gray-500"}`}
                 >
                     <FiClock size={22} /> {t("Current")}
                 </button>
                 <button
-                    onClick={() => setActiveTab("history")}
+                    onClick={() => {
+                        setActiveTab("history");
+                        setSelectedHistoryInventory(null);
+                    }}
                     className={`flex items-center gap-3 pb-4 text-lg font-semibold ${activeTab === "history" ? "text-mainColor border-b-4 border-mainColor" : "text-gray-500"}`}
                 >
                     <FiClock size={22} /> {t("History")}
@@ -1712,83 +1782,297 @@ const InventoryProduct = () => {
                 )
             ) : (
                 /* History Inventories Tab */
-                <div className="overflow-hidden bg-white shadow-lg rounded-2xl">
-                    {loadingHistory ? (
-                        <div className="flex justify-center py-20">
-                            <StaticLoader />
+                selectedHistoryInventory ? (
+                    /* History Inventory Details View (Read-Only) */
+                    <div>
+                        {/* Back Button */}
+                        <div className="mb-6">
+                            <button
+                                onClick={() => setSelectedHistoryInventory(null)}
+                                className="flex items-center gap-2 px-4 py-2 font-medium text-gray-600 transition bg-white border border-gray-200 rounded-lg shadow-sm hover:text-gray-900"
+                            >
+                                <FiArrowLeft size={20} className={direction === 'rtl' ? "rotate-180" : ""} />
+                                {t("Back to History")}
+                            </button>
                         </div>
-                    ) : historyInventories.length === 0 ? (
-                        <div className="py-20 text-xl text-center text-gray-500 bg-gray-50 rounded-2xl">
-                            {t("No history inventories found")}
+
+                        {/* Inventory Details Header */}
+                        <div className="p-6 mb-6 bg-white shadow-md rounded-2xl">
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-gray-800">
+                                        {t("Inventory Details")} #{selectedHistoryInventory.id}
+                                    </h2>
+                                    <div className="flex flex-wrap items-center gap-6 mt-2 text-gray-600">
+                                        <div>
+                                            <span className="font-semibold text-gray-700">{t("Store")}: </span>
+                                            <span>{selectedHistoryInventory.store || "—"}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold text-gray-700">{t("Date")}: </span>
+                                            <span>{selectedHistoryInventory.date ? formatDate(selectedHistoryInventory.date) : "—"}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-semibold text-gray-700">{t("Status")}: </span>
+                                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${selectedHistoryInventory.status === 'final'
+                                                ? 'bg-green-100 text-green-800'
+                                                : selectedHistoryInventory.status === 'current'
+                                                    ? 'bg-blue-100 text-blue-800'
+                                                    : 'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                {selectedHistoryInventory.status === 'final' ? t('Final') :
+                                                    selectedHistoryInventory.status === 'current' ? t('Current') :
+                                                        selectedHistoryInventory.status}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Export buttons */}
+                                {historyDetailsData?.shourtage_list && historyDetailsData.shourtage_list.length > 0 && (
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={exportHistoryDetailsPDF}
+                                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white transition bg-red-600 rounded-lg hover:bg-red-700"
+                                        >
+                                            <FiDownload size={16} />
+                                            PDF
+                                        </button>
+                                        <button
+                                            onClick={exportHistoryDetailsExcel}
+                                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white transition bg-green-600 rounded-lg hover:bg-green-700"
+                                        >
+                                            <FiDownload size={16} />
+                                            Excel
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-gray-100">
-                                    <tr>
-                                        <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
-                                            {t("ID")}
-                                        </th>
-                                        <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
-                                            {t("Store")}
-                                        </th>
-                                        <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
-                                            {t("Products")}
-                                        </th>
-                                        <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
-                                            {t("Total Quantity")}
-                                        </th>
-                                        <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
-                                            {t("Cost")}
-                                        </th>
-                                        <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
-                                            {t("Date")}
-                                        </th>
-                                        <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
-                                            {t("Status")}
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {historyInventories.map((inventory) => (
-                                        <tr key={inventory.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-5 font-medium text-gray-900">
-                                                #{inventory.id}
-                                            </td>
-                                            <td className="px-6 py-5 text-gray-600">
-                                                {inventory.store || "—"}
-                                            </td>
-                                            <td className="px-6 py-5 text-gray-600">
-                                                {inventory.product_num || 0}
-                                            </td>
-                                            <td className="px-6 py-5 text-gray-600">
-                                                {inventory.total_quantity || 0}
-                                            </td>
-                                            <td className="px-6 py-5 text-gray-600">
-                                                ${inventory.cost || 0}
-                                            </td>
-                                            <td className="px-6 py-5 text-gray-600">
-                                                {formatDate(inventory.date)}
-                                            </td>
-                                            <td className="px-6 py-5">
-                                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${inventory.status === 'final'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : inventory.status === 'current'
-                                                        ? 'bg-blue-100 text-blue-800'
-                                                        : 'bg-gray-100 text-gray-800'
-                                                    }`}>
-                                                    {inventory.status === 'final' ? t('Final') :
-                                                        inventory.status === 'current' ? t('Current') :
-                                                            t(inventory.status)}
-                                                </span>
-                                            </td>
+
+                        {/* Summary Stats Cards */}
+                        {historyDetailsData?.shourtage_list && (
+                            <div className="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2 lg:grid-cols-4">
+                                <div className="p-4 border border-blue-100 rounded-xl bg-blue-50">
+                                    <div className="text-sm font-medium text-blue-600">{t("Total Items")}</div>
+                                    <div className="mt-1 text-2xl font-bold text-blue-800">
+                                        {historyDetailsData.shourtage_list.length}
+                                    </div>
+                                </div>
+                                <div className="p-4 border border-green-100 rounded-xl bg-green-50">
+                                    <div className="text-sm font-medium text-green-600">{t("Total Quantity")}</div>
+                                    <div className="mt-1 text-2xl font-bold text-green-800">
+                                        {historyDetailsData.shourtage_list.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}
+                                    </div>
+                                </div>
+                                <div className="p-4 border border-yellow-100 rounded-xl bg-yellow-50">
+                                    <div className="text-sm font-medium text-yellow-600">{t("Total Actual Qty")}</div>
+                                    <div className="mt-1 text-2xl font-bold text-yellow-800">
+                                        {historyDetailsData.shourtage_list.reduce((sum, item) => sum + (Number(item.actual_quantity) || 0), 0)}
+                                    </div>
+                                </div>
+                                <div className="p-4 border border-red-100 rounded-xl bg-red-50">
+                                    <div className="text-sm font-medium text-red-600">{t("Total Shortage")}</div>
+                                    <div className="mt-1 text-2xl font-bold text-red-800">
+                                        {historyDetailsData.shourtage_list.reduce((sum, item) => sum + (Number(item.inability) || 0), 0)}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Details Table View */}
+                        {loadingHistoryDetails ? (
+                            <div className="flex justify-center py-20 bg-white shadow-md rounded-2xl">
+                                <StaticLoader />
+                            </div>
+                        ) : !historyDetailsData?.shourtage_list || historyDetailsData.shourtage_list.length === 0 ? (
+                            <div className="py-20 text-xl text-center text-gray-500 bg-white shadow-md rounded-2xl">
+                                {t("No details found for this inventory")}
+                            </div>
+                        ) : (
+                            <div className="overflow-hidden bg-white shadow-lg rounded-2xl">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-100">
+                                            <tr>
+                                                <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                    {t("#")}
+                                                </th>
+                                                <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                    {t("Product")}
+                                                </th>
+                                                <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                    {t("Category")}
+                                                </th>
+                                                <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                    {t("Quantity")}
+                                                </th>
+                                                <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                    {t("Actual Qty")}
+                                                </th>
+                                                <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                    {t("Shortage")}
+                                                </th>
+                                                <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                    {t("Cost")}
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            {historyDetailsData.shourtage_list.map((item, index) => (
+                                                <tr key={item.id || index} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-5 font-medium text-gray-900">
+                                                        {index + 1}
+                                                    </td>
+                                                    <td className="px-6 py-5 font-medium text-gray-900">
+                                                        {item.product || "—"}
+                                                    </td>
+                                                    <td className="px-6 py-5 text-gray-600">
+                                                        {item.category || "—"}
+                                                    </td>
+                                                    <td className="px-6 py-5 text-gray-600">
+                                                        {item.quantity ?? 0}
+                                                    </td>
+                                                    <td className="px-6 py-5 text-gray-600">
+                                                        {item.actual_quantity ?? 0}
+                                                    </td>
+                                                    <td className={`px-6 py-5 font-bold text-center ${Number(item.inability) > 0
+                                                        ? "text-red-600"
+                                                        : Number(item.inability) < 0
+                                                            ? "text-green-600"
+                                                            : "text-gray-500"
+                                                        }`}
+                                                    >
+                                                        {item.inability ?? 0}
+                                                    </td>
+                                                    <td className="px-6 py-5 text-gray-600">
+                                                        {item.cost ? `${Number(item.cost).toFixed(2)} EGP` : `0 EGP`}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot className="font-semibold bg-gray-50 text-gray-800">
+                                            <tr>
+                                                <td colSpan="3" className={`px-6 py-4 ${direction === 'rtl' ? "text-left" : "text-right"}`}>
+                                                    {t("Totals")}:
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {historyDetailsData.shourtage_list.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {historyDetailsData.shourtage_list.reduce((sum, item) => sum + (Number(item.actual_quantity) || 0), 0)}
+                                                </td>
+                                                <td className={`px-6 py-4 text-center font-bold ${
+                                                    historyDetailsData.shourtage_list.reduce((sum, item) => sum + (Number(item.inability) || 0), 0) > 0
+                                                        ? "text-red-600"
+                                                        : historyDetailsData.shourtage_list.reduce((sum, item) => sum + (Number(item.inability) || 0), 0) < 0
+                                                            ? "text-green-600"
+                                                            : "text-gray-500"
+                                                }`}>
+                                                    {historyDetailsData.shourtage_list.reduce((sum, item) => sum + (Number(item.inability) || 0), 0)}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {historyDetailsData.shourtage_list.reduce((sum, item) => sum + (Number(item.cost) || 0), 0).toFixed(2)} EGP
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    /* History Inventories Table View */
+                    <div className="overflow-hidden bg-white shadow-lg rounded-2xl">
+                        {loadingHistory ? (
+                            <div className="flex justify-center py-20">
+                                <StaticLoader />
+                            </div>
+                        ) : historyInventories.length === 0 ? (
+                            <div className="py-20 text-xl text-center text-gray-500 bg-gray-50 rounded-2xl">
+                                {t("No history inventories found")}
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-100">
+                                        <tr>
+                                            <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                {t("ID")}
+                                            </th>
+                                            <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                {t("Store")}
+                                            </th>
+                                            <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                {t("Products")}
+                                            </th>
+                                            <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                {t("Total Quantity")}
+                                            </th>
+                                            <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                {t("Cost")}
+                                            </th>
+                                            <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                {t("Date")}
+                                            </th>
+                                            <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                {t("Status")}
+                                            </th>
+                                            <th className={`px-6 py-4 text-sm font-medium ${direction === 'rtl' ? "text-right" : "text-left"} text-gray-700`}>
+                                                {t("Action")}
+                                            </th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {historyInventories.map((inventory) => (
+                                            <tr key={inventory.id} className="hover:bg-gray-50">
+                                                <td className="px-6 py-5 font-medium text-gray-900">
+                                                    #{inventory.id}
+                                                </td>
+                                                <td className="px-6 py-5 text-gray-600">
+                                                    {inventory.store || "—"}
+                                                </td>
+                                                <td className="px-6 py-5 text-gray-600">
+                                                    {inventory.product_num || 0}
+                                                </td>
+                                                <td className="px-6 py-5 text-gray-600">
+                                                    {inventory.total_quantity || 0}
+                                                </td>
+                                                <td className="px-6 py-5 text-gray-600">
+                                                    {inventory.cost || 0} EGP
+                                                </td>
+                                                <td className="px-6 py-5 text-gray-600">
+                                                    {formatDate(inventory.date)}
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${inventory.status === 'final'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : inventory.status === 'current'
+                                                            ? 'bg-blue-100 text-blue-800'
+                                                            : 'bg-gray-100 text-gray-800'
+                                                        }`}>
+                                                        {inventory.status === 'final' ? t('Final') :
+                                                            inventory.status === 'current' ? t('Current') :
+                                                                t(inventory.status)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-5">
+                                                    <button
+                                                        onClick={() => setSelectedHistoryInventory(inventory)}
+                                                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white transition rounded-lg bg-mainColor hover:bg-mainColor/90 shadow-sm"
+                                                    >
+                                                        <FiEye size={18} />
+                                                        {t("Details")}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )
             )}
         </div>
     );

@@ -28,11 +28,11 @@ const AdminLandingPage = () => {
         roles.push("Reports");
     }
 
+    const isSuperAdmin = userPositions?.name === "Super Admin";
+
     // console.log(roles);
     const filteredCategories = useMemo(() => {
         let categories = ADMIN_MENU_CATEGORIES;
-
-        const isSuperAdmin = userPositions?.name === "Super Admin";
 
         if (!isSuperAdmin) {
             categories = categories.filter(category => {
@@ -103,21 +103,46 @@ const AdminLandingPage = () => {
         });
     }, [searchQuery, t, roles]);
 
+    const isRouteAllowed = (routeConfig) => {
+        if (!routeConfig) return false;
+        if (isSuperAdmin) return true;
+        if (!routeConfig.permission || roles.includes(routeConfig.permission)) return true;
+        if (routeConfig.subRoutes && routeConfig.subRoutes.length > 0) {
+            return routeConfig.subRoutes.some(sub => {
+                if (sub.permission) return roles.includes(sub.permission);
+                if (routeConfig.permission) return roles.includes(routeConfig.permission);
+                return true;
+            });
+        }
+        return false;
+    };
+
     const handleCategoryClick = (category) => {
         if (category.id === 'home' || category.id === 'dashboard') {
             navigate(`/dashboard/home-overview?category=${category.id}`);
             return;
         }
 
-        // Find the first route in this category to get its path
-        const firstRouteName = category.routes[0];
-        const routeConfig = adminRoutes.find(r => r.name === firstRouteName);
+        // Find the first permitted route in this category
+        let targetRoute = null;
+        if (category.routes && category.routes.length > 0) {
+            for (const routeName of category.routes) {
+                const routeConfig = adminRoutes.find(r => r.name === routeName);
+                if (routeConfig && isRouteAllowed(routeConfig)) {
+                    targetRoute = routeConfig;
+                    break;
+                }
+            }
+            // Fallback to first configured route if no permission matched
+            if (!targetRoute) {
+                targetRoute = adminRoutes.find(r => r.name === category.routes[0]);
+            }
+        }
 
-        if (routeConfig) {
-            const targetPath = routeConfig.redirectTo || routeConfig.path;
+        if (targetRoute) {
+            const targetPath = targetRoute.redirectTo || targetRoute.path;
             navigate(`${targetPath}?category=${category.id}`);
         } else {
-            // Fallback if no route config found
             navigate(`/dashboard?category=${category.id}`);
         }
     };

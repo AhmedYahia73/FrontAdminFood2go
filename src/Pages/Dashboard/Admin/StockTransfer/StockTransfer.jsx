@@ -275,7 +275,7 @@ const StockTransfer = () => {
             ) : (
                 <div className="flex flex-col w-full">
                     <div className='flex flex-col items-center justify-between md:flex-row mb-6'>
-                        <TitlePage text={t('Stock Transfer')} />
+                        <TitlePage text={t('Product Movement')} />
                         <AddButton Text={t("Transfer")} handleClick={() => setShowTransferDialog(true)} />
                     </div>
 
@@ -284,7 +284,7 @@ const StockTransfer = () => {
                         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                             <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-2xl font-bold text-thirdColor">{t("Transfer Store")}</h3>
+                                    <h3 className="text-2xl font-bold text-thirdColor">{t("Product Movement")}</h3>
                                     <button onClick={handleCloseTransferDialog} className="text-3xl text-gray-500 hover:text-gray-700">×</button>
                                 </div>
 
