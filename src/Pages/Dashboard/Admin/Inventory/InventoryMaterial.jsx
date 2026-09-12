@@ -21,7 +21,8 @@ import {
     FiUpload,
     FiSave,
     FiArrowLeft,
-    FiEye
+    FiEye,
+    FiPrinter,
 } from "react-icons/fi";
 
 // Export Libraries
@@ -30,6 +31,12 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import Papa from "papaparse";
+import {
+    exportHtmlToPdf,
+    printHtml,
+    generateInventoryReportHtml,
+    generateStocksTableHtml,
+} from "../../../../Utils/pdfHelper";
 
 const InventoryMaterial = () => {
     const apiUrl = import.meta.env.VITE_API_BASE_URL;
@@ -73,6 +80,7 @@ const InventoryMaterial = () => {
     const [editingInventoryId, setEditingInventoryId] = useState(null);
     const [inventoryProducts, setInventoryProducts] = useState([]);
     const [editedQuantities, setEditedQuantities] = useState({});
+    const [downloadingPDF, setDownloadingPDF] = useState(false);
 
     // NEW: API for opening inventory details
     const {
@@ -83,13 +91,13 @@ const InventoryMaterial = () => {
         url: editingInventoryId ? `${apiUrl}/admin/inventory/material/open_inventory/${editingInventoryId}` : null,
     });
 
-    // NEW: API for modifying products
+    // NEW: API for modifying materials
     const {
         postData: modifyProducts,
         loading: loadingModifyProducts,
         response: modifyProductsResponse
     } = usePost({
-        url: editingInventoryId ? `${apiUrl}/admin/inventory/material/modify_products/${editingInventoryId}` : null,
+        url: editingInventoryId ? `${apiUrl}/admin/inventory/material/modify_materials/${editingInventoryId}` : null,
     });
 
     // NEW: API for inability list
@@ -227,20 +235,31 @@ const InventoryMaterial = () => {
         setEditingInventoryId(inventoryId);
     };
 
-    // NEW: Load inventory products when data is fetched
+    // NEW: Load inventory products/materials when data is fetched
     useEffect(() => {
-        if (openInventoryData?.products) {
-            setInventoryProducts(openInventoryData.products.map((product, index) => ({
-                ...product,
-                id: index, // Create a temporary ID for editing
-                originalQuantity: product.quantity,
-                editedQuantity: product.quantity
-            })));
+        const rawMaterials = openInventoryData?.materials || openInventoryData?.products || (Array.isArray(openInventoryData) ? openInventoryData : null);
+        if (rawMaterials && Array.isArray(rawMaterials)) {
+            setInventoryProducts(rawMaterials.map((product, index) => {
+                const actualQty = product.actual_quantity !== undefined && product.actual_quantity !== null
+                    ? product.actual_quantity
+                    : product.quantity;
+                return {
+                    ...product,
+                    id: index, // Create a temporary ID for editing
+                    material_id: product.material_id || product.id,
+                    product_id: product.material_id || product.product_id || product.id,
+                    originalQuantity: product.quantity,
+                    actual_quantity: actualQty,
+                    editedQuantity: actualQty
+                };
+            }));
 
-            // Initialize edited quantities
+            // Initialize edited quantities with actual_quantity
             const initialQuantities = {};
-            openInventoryData.products.forEach((product, index) => {
-                initialQuantities[index] = product.quantity;
+            rawMaterials.forEach((product, index) => {
+                initialQuantities[index] = product.actual_quantity !== undefined && product.actual_quantity !== null
+                    ? product.actual_quantity
+                    : product.quantity;
             });
             setEditedQuantities(initialQuantities);
         }
@@ -275,7 +294,9 @@ const InventoryMaterial = () => {
         const payload = {};
 
         inventoryProducts.forEach((product, index) => {
-            payload[`materials[${index}][id]`] = product.product_id;
+            const id = product.material_id || product.product_id || product.id;
+            payload[`materials[${index}][id]`] = id;
+            payload[`materials[${index}][actual_quantity]`] = editedQuantities[index];
             payload[`materials[${index}][quantity]`] = editedQuantities[index];
         });
 
@@ -298,8 +319,12 @@ const InventoryMaterial = () => {
 
     // NEW: Load shortage list when data is fetched
     useEffect(() => {
-        if (inabilityListData?.shourtage_list) {
-            setShortageList(inabilityListData.shourtage_list);
+        const list = Array.isArray(inabilityListData)
+            ? inabilityListData
+            : (inabilityListData?.shourtage_list || inabilityListData?.shortage_list || inabilityListData?.data || null);
+
+        if (list && Array.isArray(list)) {
+            setShortageList(list);
 
             // Initialize selected shortages
             setSelectedShortages([]);
@@ -308,7 +333,7 @@ const InventoryMaterial = () => {
             // Initialize edited shortages and reasons
             const initialShortages = {};
             const initialReasons = {};
-            inabilityListData.shourtage_list.forEach((item, index) => {
+            list.forEach((item, index) => {
                 initialShortages[index] = item.inability || 0;
                 initialReasons[index] = item.reason || "";
             });
@@ -526,32 +551,26 @@ const InventoryMaterial = () => {
             ? stocks
             : stocks.filter((s) => selectedRows.includes(s.id));
 
-    const exportPDF = () => {
+    const exportPDF = async () => {
         const data = getExportData();
-        const doc = new jsPDF("p", "mm", "a4");
-        doc.setFontSize(18);
-        doc.text("Inventory Products Report", 14, 22);
-        doc.setFontSize(11);
-        doc.setTextColor(100);
-        doc.text(`Store: ${selectedStore?.label || "—"}`, 14, 30);
-        doc.text(`Exported: ${data.length} items`, 14, 37);
-
-        autoTable(doc, {
-            head: [["Product", "Category", "Unit", "Quantity", "Actual Qty", "Shortage"]],
-            body: data.map((s) => [
-                s.product || "—",
-                s.category || "—",
-                s.unit || "—",
-                s.quantity,
-                s.actual_quantity,
-                s.inability ?? "—",
-            ]),
-            startY: 45,
-            theme: "grid",
-            headStyles: { fillColor: [59, 130, 246], textColor: 255 },
-        });
-
-        doc.save(`inventory_${selectedStore?.label || "all"}_${new Date().toISOString().split("T")[0]}.pdf`);
+        const isRtl = i18n.language === "ar";
+        try {
+            const html = generateStocksTableHtml({
+                data,
+                storeLabel: selectedStore?.label || "—",
+                isRtl,
+                t,
+            });
+            await exportHtmlToPdf(
+                html,
+                `inventory_${selectedStore?.label || "all"}_${new Date().toISOString().split("T")[0]}.pdf`,
+                isRtl
+            );
+            auth.toastSuccess(t("PDF downloaded successfully"));
+        } catch (error) {
+            console.error("PDF export error:", error);
+            auth.toastError(t("Error generating PDF"));
+        }
     };
 
     const exportExcel = () => {
@@ -596,61 +615,56 @@ const InventoryMaterial = () => {
     // Check if any quantities have been changed
     const hasQuantityChanges = useMemo(() => {
         return inventoryProducts.some((product, index) =>
-            editedQuantities[index] !== product.originalQuantity
+            editedQuantities[index] !== (product.actual_quantity !== undefined && product.actual_quantity !== null ? product.actual_quantity : product.originalQuantity)
         );
     }, [inventoryProducts, editedQuantities]);
 
-    // NEW: Export report functions - updated to use modifyProductsResponse
-    const exportReportPDF = () => {
+    // NEW: Export report functions - updated to use exportHtmlToPdf with Arabic & RTL support
+    const exportReportPDF = async () => {
         if (!modifyProductsResponse?.data?.report) return;
 
         const report = modifyProductsResponse.data.report;
         const storeName = modifyProductsResponse.data.store_name || "Unknown Store";
+        const isRtl = i18n.language === "ar";
 
-        const doc = new jsPDF();
+        setDownloadingPDF(true);
+        try {
+            const html = generateInventoryReportHtml({
+                report,
+                storeName,
+                inventoryId: editingInventoryId,
+                isRtl,
+                t,
+            });
+            await exportHtmlToPdf(
+                html,
+                `inventory_report_${editingInventoryId}_${new Date().toISOString().split("T")[0]}.pdf`,
+                isRtl
+            );
+            auth.toastSuccess(t("PDF downloaded successfully"));
+        } catch (error) {
+            console.error("PDF export error:", error);
+            auth.toastError(t("Error generating PDF"));
+        } finally {
+            setDownloadingPDF(false);
+        }
+    };
 
-        // Title
-        doc.setFontSize(16);
-        doc.text(`Inventory Report #${editingInventoryId}`, 14, 20);
-        doc.setFontSize(12);
-        doc.text(`Store: ${storeName}`, 14, 30);
-        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 40);
+    const handlePrintReport = () => {
+        if (!modifyProductsResponse?.data?.report) return;
 
-        // Summary stats
-        const totalProducts = report.length;
-        const totalQuantity = report.reduce((sum, item) => sum + (item.quantity || 0), 0);
-        const totalActualQty = report.reduce((sum, item) => sum + (item.actual_quantity || 0), 0);
-        const totalShortage = report.reduce((sum, item) => sum + (item.inability || 0), 0);
+        const report = modifyProductsResponse.data.report;
+        const storeName = modifyProductsResponse.data.store_name || "Unknown Store";
+        const isRtl = i18n.language === "ar";
 
-        doc.text(`Total Products: ${totalProducts}`, 14, 55);
-        doc.text(`Total Quantity: ${totalQuantity}`, 14, 65);
-        doc.text(`Total Actual Quantity: ${totalActualQty}`, 14, 75);
-        doc.text(`Total Shortage: ${totalShortage}`, 14, 85);
-
-        // Table headers
-        const headers = [["#", "Product", "Category", "Qty", "Actual Qty", "Shortage", "Cost"]];
-
-        // Table data
-        const data = report.map((item, index) => [
-            index + 1,
-            item.product || "—",
-            item.category || "—",
-            item.quantity || 0,
-            item.actual_quantity || 0,
-            item.inability || 0,
-            `${item.cost || 0} EGP`
-        ]);
-
-        // Add table
-        autoTable(doc, {
-            head: headers,
-            body: data,
-            startY: 95,
-            theme: "grid",
-            headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+        const html = generateInventoryReportHtml({
+            report,
+            storeName,
+            inventoryId: editingInventoryId,
+            isRtl,
+            t,
         });
-
-        doc.save(`inventory_report_${editingInventoryId}_${new Date().toISOString().split("T")[0]}.pdf`);
+        printHtml(html, isRtl, `${t("Inventory Report")} #${editingInventoryId}`);
     };
 
     const exportReportCSV = () => {
@@ -672,20 +686,20 @@ const InventoryMaterial = () => {
             ["Generated", new Date().toLocaleDateString()],
             [],
             ["Summary"],
-            ["Total Products", totalProducts],
+            ["Total Materials", totalProducts],
             ["Total Quantity", totalQuantity],
             ["Total Actual Quantity", totalActualQty],
             ["Total Shortage", totalShortage],
             [],
-            ["Detailed Products"],
-            ["#", "Product", "Category", "Quantity", "Actual Quantity", "Shortage", "Cost", "Date"]
+            ["Detailed Materials"],
+            ["#", "Material", "Category", "Quantity", "Actual Quantity", "Shortage", "Cost", "Date"]
         ];
 
-        // Add product details
+        // Add material details
         report.forEach((item, index) => {
             csvData.push([
                 index + 1,
-                item.product || "",
+                item.material || item.product || "",
                 item.category || "",
                 item.quantity || 0,
                 item.actual_quantity || 0,
@@ -1091,7 +1105,7 @@ const InventoryMaterial = () => {
                                                     </th>
                                                     
                                                     <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
-                                                        {t("Product")}
+                                                        {t("Material")}
                                                     </th>
                                                     <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
                                                         {t("Category")}
@@ -1124,7 +1138,7 @@ const InventoryMaterial = () => {
                                                                 />
                                                             </td>
                                                             <td className="px-6 py-5 font-medium text-gray-900">
-                                                                {item.product || "—"}
+                                                                {item.material || item.product || "—"}
                                                             </td>
                                                             <td className="px-6 py-5 text-gray-600">
                                                                 {item.category || "—"}
@@ -1209,14 +1223,26 @@ const InventoryMaterial = () => {
                                         <div className="flex gap-3">
                                             <button
                                                 onClick={exportReportPDF}
-                                                className="p-3 text-white bg-red-600 rounded-full shadow-lg hover:bg-red-700"
-                                                title="PDF"
+                                                disabled={downloadingPDF}
+                                                className="p-3 text-white bg-red-600 rounded-full shadow-lg hover:bg-red-700 disabled:opacity-50 transition-all flex items-center justify-center"
+                                                title={t("Download PDF")}
                                             >
-                                                <FiFileText size={20} />
+                                                {downloadingPDF ? (
+                                                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                                                ) : (
+                                                    <FiFileText size={20} />
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={handlePrintReport}
+                                                className="p-3 text-white bg-gray-700 rounded-full shadow-lg hover:bg-gray-800 transition-all flex items-center justify-center"
+                                                title={t("Print")}
+                                            >
+                                                <FiPrinter size={20} />
                                             </button>
                                             <button
                                                 onClick={exportReportCSV}
-                                                className="p-3 text-white bg-blue-600 rounded-full shadow-lg hover:bg-blue-700"
+                                                className="p-3 text-white bg-blue-600 rounded-full shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center"
                                                 title="CSV"
                                             >
                                                 <FiDownload size={20} />
@@ -1234,7 +1260,7 @@ const InventoryMaterial = () => {
                                             {/* Summary Stats */}
                                             <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
                                                 <div className="p-4 border border-blue-100 rounded-lg bg-blue-50">
-                                                    <div className="text-sm font-medium text-blue-600">{t("Total Products")}</div>
+                                                    <div className="text-sm font-medium text-blue-600">{t("Total Materials")}</div>
                                                     <div className="mt-1 text-2xl font-bold text-blue-800">
                                                         {modifyProductsResponse.data.report.length}
                                                     </div>
@@ -1276,7 +1302,7 @@ const InventoryMaterial = () => {
                                                                 {t("#")}
                                                             </th>
                                                           <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
-                                                                {t("Product")}
+                                                                {t("Material")}
                                                             </th>  
                                                             <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
                                                                 {t("Category")}
@@ -1305,7 +1331,7 @@ const InventoryMaterial = () => {
                                                                     {index + 1}
                                                                 </td>
                                                                 <td className="px-6 py-5 font-medium text-gray-900">
-                                                                    {item.product || "—"}
+                                                                    {item.material || item.product || "—"}
                                                                 </td>
                                                                 <td className="px-6 py-5 text-gray-600">
                                                                     {item.category || "—"}
@@ -1435,7 +1461,7 @@ const InventoryMaterial = () => {
                                 </div>
                             ) : inventoryProducts.length === 0 ? (
                                 <div className="py-20 text-xl text-center text-gray-500 bg-gray-50 rounded-2xl">
-                                    {t("No products found in this inventory")}
+                                    {t("No materials found in this inventory")}
                                 </div>
                             ) : (
                                 <div className="overflow-hidden bg-white shadow-lg rounded-2xl">
@@ -1447,7 +1473,7 @@ const InventoryMaterial = () => {
                                                         {t("Category")}
                                                     </th>
                                                     <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
-                                                        {t("Product")}
+                                                        {t("Material")}
                                                     </th>
                                                     <th className="px-6 py-4 text-sm font-medium text-left text-gray-700">
                                                         {t("Original Quantity")}
@@ -1470,7 +1496,7 @@ const InventoryMaterial = () => {
                                                             {product.category || "—"}
                                                         </td>
                                                         <td className="px-6 py-5 font-medium text-gray-900">
-                                                            {product.product || "—"}
+                                                            {product.material || product.product || "—"}
                                                         </td>
                                                         <td className="px-6 py-5 text-gray-600">
                                                             {product.originalQuantity || 0}
@@ -1478,7 +1504,7 @@ const InventoryMaterial = () => {
                                                         <td className="px-6 py-5">
                                                             <input
                                                                 type="number"
-                                                                value={editedQuantities[index] || product.quantity || 0}
+                                                                value={editedQuantities[index] ?? product.actual_quantity ?? product.quantity ?? 0}
                                                                 onChange={(e) => handleInventoryQuantityChange(index, e.target.value)}
                                                                 className="w-32 px-3 py-2 font-medium text-center transition border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                                             />

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && npm run build --prefix point-of-sale",
+    "install:all": "npm install && npm install --prefix point-of-sale",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -61,16 +62,18 @@
     "tailwindcss": "^3.4.14",
     "vite": "^5.4.8"
   },
-  "env": {
-    "browser": true,
-    "es2021": true
-  },
-  "extends": [
-    "eslint:recommended",
-    "plugin:react/recommended"
-  ],
-  "rules": {
-    "react/prop-types": "off",
-    "no-unused-vars": "warn"
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es2021": true
+    },
+    "extends": [
+      "eslint:recommended",
+      "plugin:react/recommended"
+    ],
+    "rules": {
+      "react/prop-types": "off",
+      "no-unused-vars": "warn"
+    }
   }
 }

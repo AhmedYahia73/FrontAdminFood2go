@@ -1,0 +1,32 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # ==========================================
+  # 1. إعدادات المشروع الفرعي (Point of Sale)
+  # ==========================================
+  # توجيه المسار إلى فولدر dist الداخلي
+  RewriteCond %{REQUEST_URI} ^/point-of-sale(/?.*)$ [NC]
+  RewriteCond %{REQUEST_URI} !^/point-of-sale/dist/ [NC]
+  RewriteRule ^point-of-sale(/?.*)$ point-of-sale/dist$1 [L]
+
+  # حل مشكلة SPA للمشروع الفرعي
+  RewriteCond %{REQUEST_URI} ^/point-of-sale/dist/ [NC]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^point-of-sale/dist/.*$ point-of-sale/dist/index.html [L]
+
+  # ==========================================
+  # 2. إعدادات المشروع الرئيسي (Root)
+  # ==========================================
+  # توجيه المسار إلى فولدر dist الرئيسي (مع تجاهل الفرعي)
+  RewriteCond %{REQUEST_URI} !^/point-of-sale [NC]
+  RewriteCond %{REQUEST_URI} !^/dist/ [NC]
+  RewriteRule ^(.*)$ dist/$1 [L]
+
+  # حل مشكلة SPA للمشروع الرئيسي
+  RewriteCond %{REQUEST_URI} ^/dist/ [NC]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^dist/.*$ dist/index.html [L]
+</IfModule>
