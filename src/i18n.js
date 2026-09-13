@@ -8,6 +8,12 @@ const resources = {
                "ProductType": "Product Type",
                "Supplier": "Supplier",
                "Product Movement": "Product Movement",
+               "From Store": "From Store",
+               "To Store": "To Store",
+               "All From Stores": "All From Stores",
+               "All To Stores": "All To Stores",
+               "Reset Filter": "Reset Filter",
+               "Product Recipe": "Product Recipe",
                "FoodProduct": "Food Product",
                "ProductByTime": "Product by Time",
                "UnitTime": "Unit Time",
@@ -2348,15 +2354,19 @@ const resources = {
                 "Invoice Date": "Invoice Date",
                 "Payment Methods Breakdown": "Payment Methods Breakdown",
                "id is wrong": "Order Not Found",
-
           },
-
      },
 
      ar: {
           translation: {
                "Supplier": "الموردين",
                "Product Movement": "حركة المنتجات",
+               "From Store": "المخزن المصدر",
+               "To Store": "المخزن المستلم",
+               "All From Stores": "كل المخازن المصدر",
+               "All To Stores": "كل المخازن المستلمة",
+               "Reset Filter": "إعادة ضبط التصفية",
+               "Product Recipe": "وصفة المنتج",
                "ProductType": "نوع المنتج",
                "FoodProduct": "منتج طعام",
                "ProductByTime": "منتج بالوقت",

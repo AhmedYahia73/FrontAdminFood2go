@@ -112,9 +112,19 @@ const Recipes = () => {
                     <TitlePage text={`${t("Recipes")}${productName ? `: ${productName}` : ""}`} />
                 </div>
 
-                <Link to="add" state={{ productName }}>
-                    <AddButton Text={t("Add Recipe")} />
-                </Link>
+                <div className="flex flex-wrap items-center gap-3">
+                    <Link to="/dashboard/recipe_products/product?category=inventory_supply">
+                        <button
+                            type="button"
+                            className="flex shadow cursor-pointer items-center gap-x-2 justify-center bg-white hover:bg-slate-50 font-TextFontMedium rounded-lg px-4 py-3 outline-none text-mainColor border border-slate-200 transition-colors"
+                        >
+                            <span className="text-thirdColor text-xl">{t("Product Recipe")}</span>
+                        </button>
+                    </Link>
+                    <Link to="add" state={{ productName }}>
+                        <AddButton Text={t("Add Recipe")} />
+                    </Link>
+                </div>
             </div>
 
             {/* Table */}

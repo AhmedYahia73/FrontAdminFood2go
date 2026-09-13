@@ -203,12 +203,6 @@ export const adminRoutes = [
         redirectTo: "/dashboard/recipe_products/category",
     },
     {
-        name: "Manufacturing",
-        path: "/dashboard/manufacturing",
-        permission: "manufacturing",
-        icon: GiManualMeatGrinder,
-    },
-    {
         name: "Purchase",
         path: "/dashboard/purchase",
         permission: "purchase",
@@ -219,6 +213,12 @@ export const adminRoutes = [
             { name: "Wasted", path: "/dashboard/purchase/purchase_wasted", permission: "purchase" },
         ],
         redirectTo: "/dashboard/purchase/purchase_list",
+    },
+    {
+        name: "Manufacturing",
+        path: "/dashboard/manufacturing",
+        permission: "manufacturing",
+        icon: GiManualMeatGrinder,
     },
     // --- Branches ---
     {
@@ -588,10 +588,10 @@ export const ADMIN_MENU_CATEGORIES = [
             "Stock",
             "Product Movement",
             "Inventory",
-            "Manufacturing",
             "Purchase",
-            "Recipe",
             "Raw Material",
+            "Recipe",
+            "Manufacturing",
         ],
     },
     {

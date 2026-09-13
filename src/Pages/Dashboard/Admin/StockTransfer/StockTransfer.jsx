@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
     StaticLoader,
     Switch,
@@ -492,11 +492,22 @@ const StockTransfer = () => {
     const auth = useAuth();
     const isRtl = i18n.language === 'ar';
 
+    const [filterFromStore, setFilterFromStore]     = useState("");
+    const [filterToStore, setFilterToStore]         = useState("");
+
+    const queryParams = useMemo(() => {
+        const params = new URLSearchParams();
+        if (filterFromStore) params.set("from_store_id", filterFromStore);
+        if (filterToStore) params.set("to_store_id", filterToStore);
+        const s = params.toString();
+        return s ? `?${s}` : "";
+    }, [filterFromStore, filterToStore]);
+
     const {
         refetch: refetchPurchaseTransfer,
         loading: loadingPurchaseTransfer,
         data: dataPurchaseTransfer,
-    } = useGet({ url: `${apiUrl}/admin/purchase_transfer` });
+    } = useGet({ url: `${apiUrl}/admin/purchase_transfer${queryParams}` });
 
     const { changeState, loadingChange } = useChangeState();
     const { postData, loadingPost, response } = usePost({
@@ -997,6 +1008,60 @@ const StockTransfer = () => {
                             onClose={() => setReceiptData(null)}
                         />
                     )}
+
+                    {/* ═════════════════ FILTERS ═════════════════ */}
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row items-stretch md:items-center gap-4">
+                        <div className="w-full md:w-64">
+                            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                {t("From Store")}
+                            </label>
+                            <Select
+                                options={[{ value: "", label: t("All From Stores") }, ...stores]}
+                                value={stores.find(s => String(s.value) === String(filterFromStore)) || { value: "", label: t("All From Stores") }}
+                                onChange={(opt) => {
+                                    setFilterFromStore(opt?.value || "");
+                                    setCurrentPage(1);
+                                }}
+                                placeholder={t("From Store")}
+                                styles={selectStyles}
+                                isClearable={false}
+                            />
+                        </div>
+
+                        <div className="w-full md:w-64">
+                            <label className="block text-xs font-bold text-slate-600 mb-1.5">
+                                {t("To Store")}
+                            </label>
+                            <Select
+                                options={[{ value: "", label: t("All To Stores") }, ...stores]}
+                                value={stores.find(s => String(s.value) === String(filterToStore)) || { value: "", label: t("All To Stores") }}
+                                onChange={(opt) => {
+                                    setFilterToStore(opt?.value || "");
+                                    setCurrentPage(1);
+                                }}
+                                placeholder={t("To Store")}
+                                styles={selectStyles}
+                                isClearable={false}
+                            />
+                        </div>
+
+                        {(filterFromStore || filterToStore) && (
+                            <div className="md:self-end pb-0.5">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setFilterFromStore("");
+                                        setFilterToStore("");
+                                        setCurrentPage(1);
+                                    }}
+                                    className="px-4 py-2.5 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors flex items-center gap-1.5 border border-rose-200"
+                                >
+                                    <span>✕</span>
+                                    <span>{t("Reset Filter")}</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
 
                     {/* ═════════════════ TABLE ═════════════════ */}
                     <table className="block w-full overflow-x-scroll sm:min-w-0 scrollPage">
