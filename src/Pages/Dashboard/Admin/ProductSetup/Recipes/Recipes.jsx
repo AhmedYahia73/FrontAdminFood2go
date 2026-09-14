@@ -11,6 +11,7 @@ import { t } from "i18next";
 import { IoArrowBack } from "react-icons/io5";
 import { EditIcon, DeleteIcon } from "../../../../../Assets/Icons/AllIcons";
 import { useDelete } from "../../../../../Hooks/useDelete";
+import AddProductRecipeModal from "./AddProductRecipeModal";
 
 const Recipes = () => {
     const apiUrl = import.meta.env.VITE_API_BASE_URL;
@@ -32,6 +33,8 @@ const Recipes = () => {
     const [productName, setProductName] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const recipesPerPage = 20;
+
+    const [showProductRecipeModal, setShowProductRecipeModal] = useState(false);
 
     // Store the full recipe object when opening delete modal
     const [openDelete, setOpenDelete] = useState(null);
@@ -113,14 +116,13 @@ const Recipes = () => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                    <Link to="/dashboard/recipe_products/product?category=inventory_supply">
-                        <button
-                            type="button"
-                            className="flex shadow cursor-pointer items-center gap-x-2 justify-center bg-white hover:bg-slate-50 font-TextFontMedium rounded-lg px-4 py-3 outline-none text-mainColor border border-slate-200 transition-colors"
-                        >
-                            <span className="text-thirdColor text-xl">{t("Product Recipe")}</span>
-                        </button>
-                    </Link>
+                    <button
+                        type="button"
+                        onClick={() => setShowProductRecipeModal(true)}
+                        className="flex shadow cursor-pointer items-center gap-x-2 justify-center bg-white hover:bg-slate-50 font-TextFontMedium rounded-lg px-4 py-3 outline-none text-mainColor border border-slate-200 transition-colors"
+                    >
+                        <span className="text-thirdColor text-xl">{t("Product Recipe")}</span>
+                    </button>
                     <Link to="add" state={{ productName }}>
                         <AddButton Text={t("Add Recipe")} />
                     </Link>
@@ -227,6 +229,18 @@ const Recipes = () => {
                     </div>
                 )}
             </div>
+
+            {/* Add Product Recipe Modal */}
+            <AddProductRecipeModal
+                isOpen={showProductRecipeModal}
+                onClose={() => setShowProductRecipeModal(false)}
+                productId={productId}
+                productName={productName}
+                initialCategories={dataRecipes?.store_categories}
+                initialUnits={dataRecipes?.units}
+                initialStores={dataRecipes?.stores}
+                onSuccess={refetchRecipes}
+            />
 
             {/* Delete Confirmation Modal */}
             {openDelete && (

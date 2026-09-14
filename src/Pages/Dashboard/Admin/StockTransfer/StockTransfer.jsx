@@ -494,20 +494,28 @@ const StockTransfer = () => {
 
     const [filterFromStore, setFilterFromStore]     = useState("");
     const [filterToStore, setFilterToStore]         = useState("");
+    const [currentPage, setCurrentPage]             = useState(1);
+    const itemsPerPage                              = 20;
 
     const queryParams = useMemo(() => {
         const params = new URLSearchParams();
+        params.set("page", currentPage);
+        params.set("per_page", itemsPerPage);
         if (filterFromStore) params.set("from_store_id", filterFromStore);
         if (filterToStore) params.set("to_store_id", filterToStore);
         const s = params.toString();
         return s ? `?${s}` : "";
-    }, [filterFromStore, filterToStore]);
+    }, [currentPage, filterFromStore, filterToStore, itemsPerPage]);
 
     const {
         refetch: refetchPurchaseTransfer,
         loading: loadingPurchaseTransfer,
         data: dataPurchaseTransfer,
-    } = useGet({ url: `${apiUrl}/admin/purchase_transfer${queryParams}` });
+    } = useGet({ 
+        url: `${apiUrl}/admin/purchase_transfer${queryParams}`,
+        staleTime: 0,
+        gcTime: 0,
+    });
 
     const { changeState, loadingChange } = useChangeState();
     const { postData, loadingPost, response } = usePost({
@@ -532,19 +540,27 @@ const StockTransfer = () => {
     const [receiptData, setReceiptData]     = useState(null);
     const [rowPdfLoading, setRowPdfLoading] = useState(null);
 
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 20;
-    const totalPages   = Math.ceil(PurchaseTransfers.length / itemsPerPage);
-    const currentItems = PurchaseTransfers.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
+    const isServerPaginated = Boolean(dataPurchaseTransfer?.purchases?.data || dataPurchaseTransfer?.pagination);
+    const totalPages = isServerPaginated
+        ? (dataPurchaseTransfer?.purchases?.last_page || dataPurchaseTransfer?.pagination?.last_page || 1)
+        : (Math.ceil(PurchaseTransfers.length / itemsPerPage) || 1);
 
-    useEffect(() => { refetchPurchaseTransfer(); }, []);
+    const currentItems = isServerPaginated
+        ? PurchaseTransfers
+        : PurchaseTransfers.slice(
+            (currentPage - 1) * itemsPerPage,
+            currentPage * itemsPerPage
+        );
 
     useEffect(() => {
         if (!dataPurchaseTransfer) return;
-        if (dataPurchaseTransfer.purchases)           setPurchaseTransfers(dataPurchaseTransfer.purchases);
+        if (dataPurchaseTransfer.purchases) {
+            if (Array.isArray(dataPurchaseTransfer.purchases.data)) {
+                setPurchaseTransfers(dataPurchaseTransfer.purchases.data);
+            } else if (Array.isArray(dataPurchaseTransfer.purchases)) {
+                setPurchaseTransfers(dataPurchaseTransfer.purchases);
+            }
+        }
         if (dataPurchaseTransfer.stores)              setStores(dataPurchaseTransfer.stores.map(s => ({ value: s.id, label: s.name })));
         if (dataPurchaseTransfer.categories)          setCategories(dataPurchaseTransfer.categories.map(c => ({ value: c.id, label: c.name })));
         if (dataPurchaseTransfer.material_categories) setMaterialCategories(dataPurchaseTransfer.material_categories.map(c => ({ value: c.id, label: c.name })));
@@ -566,6 +582,7 @@ const StockTransfer = () => {
                 });
             }
             closeDialog();
+            setCurrentPage(1);
             refetchPurchaseTransfer();
         }
     }, [response, loadingPost]);
@@ -1156,23 +1173,49 @@ const StockTransfer = () => {
                     </table>
 
                     {/* ═════════════════ PAGINATION ═════════════════ */}
-                    {PurchaseTransfers.length > 0 && (
+                    {totalPages > 1 && (
                         <div className="flex flex-wrap items-center justify-center my-6 gap-x-4">
-                            {currentPage !== 1 && (
-                                <button onClick={() => setCurrentPage(p => p - 1)}
-                                    className="px-4 py-2 text-lg text-white rounded-xl bg-mainColor font-TextFontMedium">
+                            {currentPage > 1 && (
+                                <button 
+                                    type="button"
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    className="px-4 py-2 text-sm text-white rounded-xl bg-mainColor font-TextFontMedium hover:opacity-90 transition-opacity">
                                     {t("Prev")}
                                 </button>
                             )}
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                <button key={page} onClick={() => setCurrentPage(page)}
-                                    className={`px-4 py-2 mx-1 text-lg font-TextFontSemiBold rounded-full duration-300 ${currentPage === page ? "bg-mainColor text-white" : "text-mainColor"}`}>
-                                    {page}
-                                </button>
-                            ))}
-                            {totalPages !== currentPage && (
-                                <button onClick={() => setCurrentPage(p => p + 1)}
-                                    className="px-4 py-2 text-lg text-white rounded-xl bg-mainColor font-TextFontMedium">
+                            <div className="flex items-center gap-1.5">
+                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                    let pageNum;
+                                    if (totalPages <= 5) {
+                                        pageNum = i + 1;
+                                    } else if (currentPage <= 3) {
+                                        pageNum = i + 1;
+                                    } else if (currentPage >= totalPages - 2) {
+                                        pageNum = totalPages - 4 + i;
+                                    } else {
+                                        pageNum = currentPage - 2 + i;
+                                    }
+
+                                    return (
+                                        <button 
+                                            key={pageNum}
+                                            type="button"
+                                            onClick={() => setCurrentPage(pageNum)}
+                                            className={`px-3.5 py-1.5 min-w-[36px] text-sm font-TextFontSemiBold rounded-full duration-300 transition-all ${
+                                                currentPage === pageNum 
+                                                    ? "bg-mainColor text-white shadow-sm" 
+                                                    : "text-mainColor hover:bg-gray-100"
+                                            }`}>
+                                            {pageNum}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            {totalPages > currentPage && (
+                                <button 
+                                    type="button"
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    className="px-4 py-2 text-sm text-white rounded-xl bg-mainColor font-TextFontMedium hover:opacity-90 transition-opacity">
                                     {t("Next")}
                                 </button>
                             )}
