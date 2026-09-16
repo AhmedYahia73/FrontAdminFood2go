@@ -2,31 +2,62 @@
   RewriteEngine On
   RewriteBase /
 
-  # ==========================================
+  # ----------------------------------------------------------------------
+  # منع حلقات إعادة التوجيه اللانهائية (Prevent Rewrite Recursion Loop)
+  # ----------------------------------------------------------------------
+  RewriteCond %{ENV:REDIRECT_STATUS} 200
+  RewriteRule ^ - [L]
+
+  # إذا كان الملف المطلوب موجوداً بالفعل في المسار الحالي، اطلبه مباشرة
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # ======================================================================
   # 1. إعدادات المشروع الفرعي (Point of Sale)
-  # ==========================================
-  # توجيه المسار إلى فولدر dist الداخلي
-  RewriteCond %{REQUEST_URI} ^/point-of-sale(/?.*)$ [NC]
-  RewriteCond %{REQUEST_URI} !^/point-of-sale/dist/ [NC]
-  RewriteRule ^point-of-sale(/?.*)$ point-of-sale/dist$1 [L]
+  # ======================================================================
+  # أ) في حالة عدم وجود مجلد point-of-sale على السيرفر:
+  # تحويل أي طلب لـ /point-of-sale إلى الصفحة الرئيسية للادمن لتجنب أي خطأ 500 أو 404
+  RewriteCond %{DOCUMENT_ROOT}/point-of-sale !-d
+  RewriteCond point-of-sale !-d
+  RewriteRule ^point-of-sale(/.*)?$ / [R=302,L]
 
-  # حل مشكلة SPA للمشروع الفرعي
-  RewriteCond %{REQUEST_URI} ^/point-of-sale/dist/ [NC]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule ^point-of-sale/dist/.*$ point-of-sale/dist/index.html [L]
+  # ب) في حالة وجود مجلد point-of-sale على السيرفر:
+  # منع تكرار التوجيه إذا كان المسار يشير بالفعل إلى dist الخاص به
+  RewriteRule ^point-of-sale/dist/ - [L]
 
-  # ==========================================
-  # 2. إعدادات المشروع الرئيسي (Root)
-  # ==========================================
-  # توجيه المسار إلى فولدر dist الرئيسي (مع تجاهل الفرعي)
+  # توجيه الملفات الثابتة الخاصة بـ point-of-sale (css, js, images, ...)
+  RewriteCond %{DOCUMENT_ROOT}/point-of-sale/dist/$1 -f [OR]
+  RewriteCond point-of-sale/dist/$1 -f
+  RewriteRule ^point-of-sale/(.*)$ point-of-sale/dist/$1 [L]
+
+  # حل مشكلة الـ SPA (React Router) لـ point-of-sale
+  RewriteCond %{DOCUMENT_ROOT}/point-of-sale/dist/index.html -f [OR]
+  RewriteCond point-of-sale/dist/index.html -f
+  RewriteRule ^point-of-sale(/.*)?$ point-of-sale/dist/index.html [L]
+
+  # ======================================================================
+  # 2. إعدادات المشروع الرئيسي (Main Admin)
+  # ======================================================================
+  # منع تكرار التوجيه إذا كان المسار يشير بالفعل لمجلد dist
+  RewriteRule ^dist/ - [L]
+
+  # استثناء مسار point-of-sale إذا كان موجوداً
   RewriteCond %{REQUEST_URI} !^/point-of-sale [NC]
-  RewriteCond %{REQUEST_URI} !^/dist/ [NC]
+  # توجيه الملفات الثابتة الموجودة داخل dist (assets, sw, images, ...)
+  RewriteCond %{DOCUMENT_ROOT}/dist/$1 -f [OR]
+  RewriteCond dist/$1 -f
   RewriteRule ^(.*)$ dist/$1 [L]
 
-  # حل مشكلة SPA للمشروع الرئيسي
-  RewriteCond %{REQUEST_URI} ^/dist/ [NC]
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule ^dist/.*$ dist/index.html [L]
+  # حل مشكلة الـ SPA (React Router) للمشروع الرئيسي (Fallback to index.html)
+  RewriteCond %{REQUEST_URI} !^/point-of-sale [NC]
+  RewriteCond %{DOCUMENT_ROOT}/dist/index.html -f [OR]
+  RewriteCond dist/index.html -f
+  RewriteRule ^(.*)$ dist/index.html [L]
+
+  # Fallback في حال رفع الملفات مباشرة بدون مجلد dist
+  RewriteCond %{REQUEST_URI} !^/point-of-sale [NC]
+  RewriteCond %{DOCUMENT_ROOT}/index.html -f [OR]
+  RewriteCond index.html -f
+  RewriteRule ^(.*)$ index.html [L]
 </IfModule>
