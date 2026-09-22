@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../Context/Auth';
 import axios from 'axios';
@@ -7,15 +7,14 @@ import { IoNotificationsOutline } from 'react-icons/io5';
 import { HiOutlineCheckCircle, HiOutlineBellAlert } from 'react-icons/hi2';
 import { formatDistanceToNow } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
+import { toast } from 'react-toastify';
 
 const NotificationDropdown = () => {
     const { t, i18n } = useTranslation();
     const auth = useAuth();
-    const apiUrl = import.meta.env.VITE_API_BASE_URL;
+    const rawApiUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const apiUrl = rawApiUrl.trim().replace(/\/+$/, '');
     const isRtl = i18n.language === 'ar';
-
-    const role = auth.userState?.role || localStorage.getItem("role");
-    const branchId = auth.userState?.id;
 
     const [isOpen, setIsOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -30,7 +29,7 @@ const NotificationDropdown = () => {
     const scrollContainerRef = useRef(null);
     const fallbackIntervalRef = useRef(null);
 
-    const getAuthHeaders = () => {
+    const getAuthHeaders = useCallback(() => {
         const token = auth?.userState?.token || localStorage.getItem("token") || "";
         return {
             headers: {
@@ -38,14 +37,14 @@ const NotificationDropdown = () => {
                 Accept: 'application/json',
             },
         };
-    };
+    }, [auth?.userState?.token]);
 
     // ─── Non-intrusive sound chime ──────────────────────────────────────────
     const playSubtleChime = useCallback(() => {
         try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return;
-            const ctx = new AudioContext();
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
 
@@ -61,8 +60,8 @@ const NotificationDropdown = () => {
 
             osc.start();
             osc.stop(ctx.currentTime + 0.35);
-        } catch (e) {
-            console.debug('Chime muted:', e);
+        } catch {
+            // Audio context muted or unsupported
         }
     }, []);
 
@@ -70,12 +69,22 @@ const NotificationDropdown = () => {
     const fetchUnreadCount = useCallback(async () => {
         try {
             const res = await axios.get(`${apiUrl}/admin/home/notifications_count`, getAuthHeaders());
-            const count = res.data?.count ?? res.data?.notifications_count ?? 0;
-            setUnreadCount(Number(count));
+            const count = Number(
+                res.data?.count ??
+                res.data?.notifications_count ??
+                (typeof res.data?.notifications === 'number' ? res.data?.notifications : 0)
+            );
+
+            setUnreadCount((prevCount) => {
+                if (count > prevCount && prevCount > 0) {
+                    playSubtleChime();
+                }
+                return isNaN(count) ? 0 : count;
+            });
         } catch (err) {
             console.error('Failed to fetch notifications count:', err);
         }
-    }, [apiUrl]);
+    }, [apiUrl, getAuthHeaders, playSubtleChime]);
 
     // ─── Fetch Notifications List ───────────────────────────────────────────
     const fetchNotifications = useCallback(async (pageToFetch = 1, append = false) => {
@@ -93,8 +102,8 @@ const NotificationDropdown = () => {
             setNotifications((prev) => {
                 if (!append) return newItems;
                 // Merge and prevent duplicates by ID
-                const existingIds = new Set(prev.map((n) => n.id));
-                const filtered = newItems.filter((item) => !existingIds.has(item.id));
+                const existingIds = new Set(prev.map((n) => String(n.id)));
+                const filtered = newItems.filter((item) => !existingIds.has(String(item.id)));
                 return [...prev, ...filtered];
             });
 
@@ -110,7 +119,7 @@ const NotificationDropdown = () => {
             setIsLoading(false);
             setIsLoadingMore(false);
         }
-    }, [apiUrl]);
+    }, [apiUrl, getAuthHeaders]);
 
     // ─── Infinite Scroll Handler ────────────────────────────────────────────
     const handleScroll = (e) => {
@@ -120,69 +129,174 @@ const NotificationDropdown = () => {
         }
     };
 
-    // ─── Realtime (Echo) Subscription ───────────────────────────────────────
+    // ─── Realtime (Echo) Subscription & Fallback Polling ─────────────────────
     useEffect(() => {
+        // Initial fetches on mount
         fetchUnreadCount();
+        fetchNotifications(1, false);
+
+        const startFallback = () => {
+            if (!fallbackIntervalRef.current) {
+                fallbackIntervalRef.current = setInterval(fetchUnreadCount, 25000);
+            }
+        };
+
+        const stopFallback = () => {
+            if (fallbackIntervalRef.current) {
+                clearInterval(fallbackIntervalRef.current);
+                fallbackIntervalRef.current = null;
+            }
+        };
 
         if (!echo) {
-            // Echo disabled or no app key — fallback to periodic count polling
-            fallbackIntervalRef.current = setInterval(fetchUnreadCount, 60000);
-            return () => {
-                if (fallbackIntervalRef.current) clearInterval(fallbackIntervalRef.current);
-            };
+            startFallback();
+            return () => stopFallback();
         }
 
-        // Determine channel: branch uses branch channel, otherwise newNotification
-        const channelName = role === 'branch' && branchId ? `newNotification.${branchId}` : 'newNotification';
-        const channel = echo.channel(channelName);
+        const handleRealtimeNotification = (rawData) => {
+            console.log('📢 Realtime Notification received:', rawData);
 
-        const handleRealtimeNotification = (data) => {
-            console.log('📢 Realtime Notification received on', channelName, data);
+            let parsed = rawData;
+            if (typeof parsed === 'string') {
+                try {
+                    parsed = JSON.parse(parsed);
+                } catch (e) {
+                    console.error('Failed to parse realtime notification payload:', e);
+                }
+            }
+            if (parsed?.data && typeof parsed.data === 'string') {
+                try {
+                    parsed = JSON.parse(parsed.data);
+                } catch (e) {
+                    console.error('Failed to parse inner data:', e);
+                }
+            } else if (parsed?.data && typeof parsed.data === 'object') {
+                parsed = parsed.data;
+            }
+
+            const notifObj =
+                parsed && typeof parsed.notification === 'object' && parsed.notification !== null
+                    ? parsed.notification
+                    : parsed;
+
+            const notifId = notifObj?.id || parsed?.id || `temp-${Date.now()}`;
+            const notifText =
+                typeof notifObj?.notification === 'string'
+                    ? notifObj.notification
+                    : typeof parsed?.notification === 'string'
+                    ? parsed.notification
+                    : parsed?.message || '';
+
+            if (!notifText) {
+                console.warn('Empty notification payload ignored:', rawData);
+                return;
+            }
+
+            const isRead = Boolean(notifObj?.is_read ?? parsed?.is_read ?? false);
+            const createdAt = notifObj?.created_at || parsed?.created_at || new Date().toISOString();
+            const branchIds = notifObj?.branch_ids || parsed?.branch_ids || [];
 
             const receivedNotif = {
-                id: data.id || `temp-${Date.now()}`,
-                notification: data.notification,
-                is_read: Boolean(data.is_read),
-                created_at: data.created_at || new Date().toISOString(),
-                branch_ids: data.branch_ids || [],
+                id: notifId,
+                notification: notifText,
+                is_read: isRead,
+                created_at: createdAt,
+                branch_ids: branchIds,
             };
 
             setNotifications((prev) => {
-                if (prev.some((n) => n.id === receivedNotif.id)) return prev;
+                if (prev.some((n) => String(n.id) === String(receivedNotif.id))) return prev;
                 return [receivedNotif, ...prev];
             });
 
             setUnreadCount((c) => c + 1);
             playSubtleChime();
+
+            // Toast feedback
+            try {
+                toast.info(notifText, {
+                    position: isRtl ? 'top-left' : 'top-right',
+                    autoClose: 5000,
+                });
+            } catch {
+                // Toast container not available
+            }
+
+            // Browser notification if hidden
+            if (
+                document.hidden &&
+                typeof window !== 'undefined' &&
+                'Notification' in window &&
+                Notification.permission === 'granted'
+            ) {
+                try {
+                    new Notification(t('Notification', 'إشعار جديد'), {
+                        body: notifText,
+                    });
+                } catch {
+                    // Browser notification failed
+                }
+            }
         };
 
-        channel.listen('.NewNotificationEvent', handleRealtimeNotification);
+        // Determine channels to listen to
+        const channelsToListen = ['newNotification'];
+        const effectiveBranchId = auth.userState?.id || auth.userState?.admin?.id;
+        if (effectiveBranchId) {
+            channelsToListen.push(`newNotification.${effectiveBranchId}`);
+        }
 
-        // Connection events
+        const eventNames = [
+            '.NewNotificationEvent',
+            'NewNotificationEvent',
+            '.NotificationEvent',
+            'NotificationEvent',
+        ];
+
+        const subscribedChannels = channelsToListen.map((chName) => {
+            const ch = echo.channel(chName);
+            eventNames.forEach((evName) => {
+                ch.listen(evName, handleRealtimeNotification);
+            });
+            return { name: chName, channel: ch };
+        });
+
+        // Monitor connection state
         const pusher = echo.connector?.pusher;
+        const onConnected = () => stopFallback();
+        const onDisconnected = () => startFallback();
+
         if (pusher) {
-            const onDisconnect = () => {
-                if (!fallbackIntervalRef.current) {
-                    fallbackIntervalRef.current = setInterval(fetchUnreadCount, 60000);
-                }
-            };
-            const onConnect = () => {
-                if (fallbackIntervalRef.current) {
-                    clearInterval(fallbackIntervalRef.current);
-                    fallbackIntervalRef.current = null;
-                }
-            };
-            pusher.connection.bind('disconnected', onDisconnect);
-            pusher.connection.bind('connected', onConnect);
+            if (pusher.connection.state === 'connected') {
+                stopFallback();
+            } else {
+                startFallback();
+            }
+
+            pusher.connection.bind('connected', onConnected);
+            pusher.connection.bind('disconnected', onDisconnected);
+            pusher.connection.bind('failed', onDisconnected);
+            pusher.connection.bind('unavailable', onDisconnected);
+        } else {
+            startFallback();
         }
 
         return () => {
-            echo.leaveChannel(channelName);
-            if (fallbackIntervalRef.current) {
-                clearInterval(fallbackIntervalRef.current);
+            subscribedChannels.forEach(({ name, channel }) => {
+                eventNames.forEach((evName) => channel.stopListening(evName));
+                echo.leaveChannel(name);
+            });
+
+            if (pusher) {
+                pusher.connection.unbind('connected', onConnected);
+                pusher.connection.unbind('disconnected', onDisconnected);
+                pusher.connection.unbind('failed', onDisconnected);
+                pusher.connection.unbind('unavailable', onDisconnected);
             }
+
+            stopFallback();
         };
-    }, [role, branchId, fetchUnreadCount, playSubtleChime]);
+    }, [auth.userState?.id, auth.userState?.admin?.id, fetchNotifications, fetchUnreadCount, isRtl, playSubtleChime, t]);
 
     // ─── Click outside dropdown to close ────────────────────────────────────
     useEffect(() => {
@@ -200,7 +314,6 @@ const NotificationDropdown = () => {
         const nextState = !isOpen;
         setIsOpen(nextState);
         if (nextState) {
-            // Load fresh notifications on open
             fetchNotifications(1, false);
             fetchUnreadCount();
         }
@@ -212,7 +325,7 @@ const NotificationDropdown = () => {
 
         // Optimistic UI update
         setNotifications((prev) =>
-            prev.map((n) => (n.id === item.id ? { ...n, is_read: true } : n))
+            prev.map((n) => (String(n.id) === String(item.id) ? { ...n, is_read: true } : n))
         );
         setUnreadCount((prev) => Math.max(0, prev - 1));
 
@@ -259,7 +372,7 @@ const NotificationDropdown = () => {
                 addSuffix: true,
                 locale: isRtl ? ar : enUS,
             });
-        } catch (e) {
+        } catch {
             return '';
         }
     };
