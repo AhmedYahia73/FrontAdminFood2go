@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../Context/Auth.jsx';
-import { SearchBar, StaticButton, StaticLoader, SubmitButton, TextInput, PasswordInput } from '../Components.js';
+import { SearchBar, StaticButton, StaticLoader, SubmitButton, TextInput, PasswordInput, NotificationDropdown } from '../Components.js';
 import { CiGlobe } from 'react-icons/ci';
 import { IoBagHandleOutline } from 'react-icons/io5';
 import { IoIosArrowDown, IoMdNotificationsOutline } from 'react-icons/io';
@@ -408,16 +408,17 @@ const Navbar = () => {
             <RiApps2Line className="text-xl md:text-3xl text-mainColor" />
           </Link>
 
-          {/* Notification Dropdown */}
+          {/* Waiting Orders Bell Dropdown */}
           <div className="relative flex-shrink-0" ref={notificationRef}>
             <button
               type="button"
               onClick={() => setNotificationOpen(!notificationOpen)}
-              className="relative p-1"
+              className="relative p-1 rounded-full hover:bg-gray-100 transition-colors focus:outline-none"
+              title={t("Waiting Orders", "طلبات قيد الانتظار")}
             >
               <IoMdNotificationsOutline className="text-xl md:text-3xl text-mainColor" />
               {newOrders.count > 0 && (
-                <span className="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-red-600 rounded-full -top-1 -right-1">
+                <span className="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-red-600 rounded-full -top-1 -right-1 animate-pulse">
                   {newOrders.count}
                 </span>
               )}
@@ -452,6 +453,9 @@ const Navbar = () => {
               </div>
             )}
           </div>
+
+          {/* System Notifications Center (Realtime + Infinite Scroll) */}
+          <NotificationDropdown />
 
           <StaticButton
             Size="text-[10px] md:text-base"
