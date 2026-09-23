@@ -243,11 +243,12 @@ const InventoryMaterial = () => {
                 const actualQty = product.actual_quantity !== undefined && product.actual_quantity !== null
                     ? product.actual_quantity
                     : product.quantity;
+                const matId = product.material_id || product.product_id || product.id;
                 return {
                     ...product,
-                    id: index, // Create a temporary ID for editing
-                    material_id: product.material_id || product.id,
-                    product_id: product.material_id || product.product_id || product.id,
+                    id: matId,
+                    material_id: matId,
+                    product_id: matId,
                     originalQuantity: product.quantity,
                     actual_quantity: actualQty,
                     editedQuantity: actualQty
@@ -274,7 +275,7 @@ const InventoryMaterial = () => {
 
         // Update the inventoryProducts array
         setInventoryProducts(prev => prev.map((product, i) =>
-            i === index ? { ...product, editedQuantity: value } : product
+            i === index ? { ...product, editedQuantity: value, actual_quantity: value } : product
         ));
     };
 
@@ -295,9 +296,13 @@ const InventoryMaterial = () => {
 
         inventoryProducts.forEach((product, index) => {
             const id = product.material_id || product.product_id || product.id;
+            const qty = editedQuantities[index] !== undefined && editedQuantities[index] !== null && editedQuantities[index] !== ""
+                ? editedQuantities[index]
+                : (product.actual_quantity ?? product.quantity ?? 0);
+
             payload[`materials[${index}][id]`] = id;
-            payload[`materials[${index}][actual_quantity]`] = editedQuantities[index];
-            payload[`materials[${index}][quantity]`] = editedQuantities[index];
+            payload[`materials[${index}][actual_quantity]`] = qty;
+            payload[`materials[${index}][quantity]`] = qty;
         });
 
         // Set URL for modifying products

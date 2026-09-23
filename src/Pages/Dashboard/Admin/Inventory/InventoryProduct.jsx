@@ -259,10 +259,11 @@ const InventoryProduct = () => {
                 const actualQty = product.actual_quantity !== undefined && product.actual_quantity !== null
                     ? product.actual_quantity
                     : product.quantity;
+                const prodId = product.product_id || product.id;
                 return {
                     ...product,
-                    id: index, // Create a temporary ID for editing
-                    product_id: product.product_id || product.id,
+                    id: prodId,
+                    product_id: prodId,
                     originalQuantity: product.quantity,
                     actual_quantity: actualQty,
                     editedQuantity: actualQty
@@ -310,9 +311,13 @@ const InventoryProduct = () => {
 
         inventoryProducts.forEach((product, index) => {
             const id = product.product_id || product.id;
+            const qty = editedQuantities[index] !== undefined && editedQuantities[index] !== null && editedQuantities[index] !== ""
+                ? editedQuantities[index]
+                : (product.actual_quantity ?? product.quantity ?? 0);
+
             payload[`products[${index}][id]`] = id;
-            payload[`products[${index}][actual_quantity]`] = editedQuantities[index];
-            payload[`products[${index}][quantity]`] = editedQuantities[index];
+            payload[`products[${index}][actual_quantity]`] = qty;
+            payload[`products[${index}][quantity]`] = qty;
         });
 
         // Set URL for modifying products
