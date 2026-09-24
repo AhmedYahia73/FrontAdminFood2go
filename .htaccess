@@ -1,6 +1,7 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+  DirectoryIndex dist/index.html index.html
 
   # ----------------------------------------------------------------------
   # 1. منع حلقات إعادة التوجيه اللانهائية (Prevent Rewrite Recursion Loop)
@@ -8,13 +9,12 @@
   RewriteCond %{ENV:REDIRECT_STATUS} 200
   RewriteRule ^ - [L]
 
-  # إذا كان الملف المطلوب موجوداً بالفعل في المسار المطلوب، اطلبه مباشرة
-  RewriteCond %{REQUEST_FILENAME} -f
-  RewriteRule ^ - [L]
-
   # منع تكرار إعادة توجيه المسارات المحولة مسبقاً
   RewriteRule ^point-of-sale/dist/ - [L]
   RewriteRule ^dist/ - [L]
+
+  # توجيه الصفحة الرئيسية (Root أو index.html) مباشرة إلى dist/index.html
+  RewriteRule ^(index\.html)?$ dist/index.html [L]
 
   # ======================================================================
   # 2. إعدادات نقطة البيع (Point of Sale)
@@ -41,17 +41,21 @@
   # ======================================================================
   # 3. إعدادات المشروع الرئيسي (Main Admin SPA)
   # ======================================================================
-  # أ) توجيه الملفات الثابتة الموجودة داخل dist الرئيسي
+  # أ) إذا كان الملف المطلوب موجوداً بالفعل في المسار المطلوب، اطلبه مباشرة
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+
+  # ب) توجيه الملفات الثابتة الموجودة داخل dist الرئيسي
   RewriteCond %{DOCUMENT_ROOT}/dist/$1 -f [OR]
   RewriteCond dist/$1 -f
   RewriteRule ^(.*)$ dist/$1 [L]
 
-  # ب) حل مشكلة الـ SPA للمشروع الرئيسي (Fallback to dist/index.html)
+  # ج) حل مشكلة الـ SPA للمشروع الرئيسي (Fallback to dist/index.html)
   RewriteCond %{DOCUMENT_ROOT}/dist/index.html -f [OR]
   RewriteCond dist/index.html -f
   RewriteRule ^(.*)$ dist/index.html [L]
 
-  # ج) Fallback في حال وجود ملفات المشروع الرئيسي في الـ Root مباشرة بدون dist
+  # د) Fallback في حال وجود ملفات المشروع الرئيسي في الـ Root مباشرة بدون dist
   RewriteCond %{DOCUMENT_ROOT}/index.html -f [OR]
   RewriteCond index.html -f
   RewriteRule ^(.*)$ index.html [L]
