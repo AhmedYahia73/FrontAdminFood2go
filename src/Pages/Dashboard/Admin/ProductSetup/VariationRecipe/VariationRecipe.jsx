@@ -6,7 +6,7 @@ import { useDelete } from "../../../../../Hooks/useDelete";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import { AddButton, LoaderLogin, Switch } from "../../../../../Components/Components";
-import { IoArrowBack, IoPencil, IoTrash } from "react-icons/io5";
+import { IoArrowBack, IoPencil, IoTrash, IoAddCircle } from "react-icons/io5";
 import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
 import Warning from "../../../../../Assets/Icons/AnotherIcons/WarningIcon";
 
@@ -109,6 +109,22 @@ const VariationRecipe = () => {
                             )}
                         </div>
                     </div>
+                </div>
+                <div>
+                    <button
+                        onClick={() =>
+                            navigate(`../../add`, {
+                                state: {
+                                    productName: productName,
+                                    preselectedOptionId: optionId,
+                                },
+                            })
+                        }
+                        className="flex items-center gap-1.5 bg-mainColor text-white px-4 py-2 rounded-xl hover:bg-red-700 transition shadow-sm font-medium text-sm"
+                    >
+                        <IoAddCircle size={20} />
+                        <span>{t("Add Recipe")}</span>
+                    </button>
                 </div>
             </div>
 
