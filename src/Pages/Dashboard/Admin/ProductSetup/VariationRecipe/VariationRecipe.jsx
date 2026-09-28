@@ -42,21 +42,29 @@ const VariationRecipe = () => {
         }
     }, [data]);
 
-    const handleChangeStatus = async (id, name, status) => {
+    const handleChangeStatus = async (id, name, newStatus) => {
+        // Optimistic update
+        setRecipes(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+
         const success = await changeState(
-            `${apiUrl}/admin/variation_recipe/status/${id}?status=${status}`,
-            `${t("Status changed for")} ${name}`
+            `${apiUrl}/admin/variation_recipe/status/${id}`,
+            `${t("Status changed for")} ${name}`,
+            { status: newStatus }
         );
         if (success) {
+            refetch();
+        } else {
             refetch();
         }
     };
 
-    const handleDeleteClick = (id) => {
-        setOpenDelete(id);
+    const handleDeleteClick = (recipe) => {
+        setOpenDelete(recipe);
     };
 
-    const confirmDelete = async (id, name) => {
+    const confirmDelete = async (recipe) => {
+        const id = recipe?.id || recipe;
+        const name = recipe?.store_product?.name || `Recipe #${id}`;
         const success = await deleteData(
             `${apiUrl}/admin/variation_recipe/delete/${id}`,
             `${t("Deleted")} ${name}`
@@ -175,7 +183,7 @@ const VariationRecipe = () => {
                                                     handleClick={() =>
                                                         handleChangeStatus(
                                                             recipe.id,
-                                                            recipe.product_name || recipe.id,
+                                                            recipe.store_product?.name || `Recipe #${recipe.id}`,
                                                             recipe.status === 1 || recipe.status === '1' ? 0 : 1
                                                         )
                                                     }
@@ -199,7 +207,7 @@ const VariationRecipe = () => {
                                                     <IoPencil size={18} />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDeleteClick(recipe.id)}
+                                                    onClick={() => handleDeleteClick(recipe)}
                                                     className="text-red-500 hover:text-red-700 transition-colors p-2 bg-red-50 rounded-lg hover:bg-red-100 shadow-sm"
                                                     title={t("Delete Recipe")}
                                                 >
@@ -264,7 +272,7 @@ const VariationRecipe = () => {
                             <p className="text-lg text-gray-600 mb-8">
                                 {t("Are you sure you want to delete")} <br />
                                 <span className="font-bold text-mainColor">
-                                    {t("Recipe")} #{openDelete}
+                                    {openDelete?.store_product?.name || `${t("Recipe")} #${openDelete?.id || openDelete}`}
                                 </span>?
                             </p>
                             <div className="flex justify-center gap-4">
@@ -275,7 +283,7 @@ const VariationRecipe = () => {
                                     {t("Cancel")}
                                 </button>
                                 <button
-                                    onClick={() => confirmDelete(openDelete, `Recipe #${openDelete}`)}
+                                    onClick={() => confirmDelete(openDelete)}
                                     className="px-6 py-3 bg-red-600 text-white rounded-full font-medium hover:bg-red-700 transition"
                                 >
                                     {t("Delete")}
