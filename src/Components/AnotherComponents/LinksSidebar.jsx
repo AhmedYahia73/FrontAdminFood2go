@@ -45,15 +45,45 @@ const LinksSidebar = () => {
   const [permissions, setPermissions] = useState([]);
   useEffect(() => {
     const rawRoles = auth?.userState?.user_positions?.roles || [];
-    const computedPermissions = rawRoles.map((role) => role?.role || role);
+    const computedPermissions = [];
+
+    rawRoles.forEach((role) => {
+      if (role?.role) computedPermissions.push(role.role);
+      if (role?.action) computedPermissions.push(role.action);
+      if (typeof role === "string") computedPermissions.push(role);
+    });
 
     if (computedPermissions.includes("Home") && !computedPermissions.includes("Dashboard")) {
       computedPermissions.push("Dashboard");
     }
 
-    // Ensure "PosReports" role grants access to "Reports" permission (and all its sub-items)
-    if (computedPermissions.includes("PosReports") && !computedPermissions.includes("Reports")) {
-      computedPermissions.push("Reports");
+    const hasAllReports =
+      computedPermissions.includes("PosReports") ||
+      rawRoles.some(
+        (r) => (r?.role === "Reports" || r === "Reports") && (r?.action === "all" || !r?.action)
+      );
+
+    if (hasAllReports || computedPermissions.includes("PosReports")) {
+      if (!computedPermissions.includes("Reports")) {
+        computedPermissions.push("Reports");
+      }
+      computedPermissions.push(
+        "Cashier Report",
+        "Orders Reports",
+        "Financial Reports",
+        "Real Time Sales Reports",
+        "Product Reports",
+        "Dine Reports",
+        "Invoices Reports",
+        "Products Movements",
+        "Hall Reports",
+        "Cashier Shortage",
+        "End Shifts"
+      );
+    } else if (rawRoles.some((r) => r?.role === "Reports")) {
+      if (!computedPermissions.includes("Reports")) {
+        computedPermissions.push("Reports");
+      }
     }
 
     setPermissions(computedPermissions);
@@ -194,7 +224,12 @@ const LinksSidebar = () => {
           }
 
           // ✅ Show only the allowed subroutes
-          return { ...route, subRoutes: allowedSubRoutes };
+          const firstAllowedPath = allowedSubRoutes[0]?.path;
+          return {
+            ...route,
+            subRoutes: allowedSubRoutes,
+            redirectTo: firstAllowedPath || route.redirectTo || route.path,
+          };
         }
 
         // Normal route (no subRoutes)
