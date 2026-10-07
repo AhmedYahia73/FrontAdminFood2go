@@ -38,10 +38,16 @@ const EditDiscountModule = () => {
 
     const [branches, setBranches] = useState([]);
     const [modules, setModules] = useState([]);
+    const [types, setTypes] = useState([
+        { value: "all", label: "ALL" },
+        { value: "app", label: "APP" },
+        { value: "web", label: "WEB" },
+    ]);
     const [discount, setDiscount] = useState("");
     const [status, setStatus] = useState(0);
     const [selectedBranches, setSelectedBranches] = useState([]);
     const [selectedModules, setSelectedModules] = useState([]);
+    const [selectedTypes, setSelectedTypes] = useState([]);
     const [branchModules, setBranchModules] = useState([]);
 
     // Fetch data on component mount
@@ -67,44 +73,57 @@ const EditDiscountModule = () => {
                 }));
                 setModules(moduleOptions);
             }
+            if (data.type && Array.isArray(data.type)) {
+                const typeOptions = data.type.map((t) => ({
+                    value: t,
+                    label: t.toUpperCase(),
+                }));
+                setTypes(typeOptions);
+            }
         }
     }, [data]);
 
     // Set form fields when discount module data is available
     useEffect(() => {
-        if (dataDiscountItem && branches.length > 0 && modules.length > 0) {
+        if (dataDiscountItem && branches.length > 0 && modules.length > 0 && types.length > 0) {
             const discountModule = dataDiscountItem;
             
             // Set basic fields
             setDiscount(discountModule.discount?.toString() || "");
             setStatus(discountModule.status || 0);
             
-            // Extract unique branches and modules from the modules array
-            const uniqueBranchIds = [...new Set(discountModule.modules.map(item => item.branch_id))];
-            const uniqueModuleNames = [...new Set(discountModule.modules.map(item => item.module))];
-            
-            // Set selected branches
-            const branchSelections = branches.filter(branch => 
-                uniqueBranchIds.includes(branch.value)
+            // Extract selected branches (supporting branch_id or branch name fallback)
+            const branchSelections = branches.filter((branch) =>
+                discountModule.modules?.some(
+                    (item) =>
+                        (item.branch_id !== undefined && item.branch_id !== null && Number(item.branch_id) === Number(branch.value)) ||
+                        (item.branch && item.branch.trim().toLowerCase() === branch.label.trim().toLowerCase())
+                )
             );
             setSelectedBranches(branchSelections);
             
-            // Set selected modules
-            const moduleSelections = modules.filter(module => 
+            // Extract selected modules
+            const uniqueModuleNames = [
+                ...new Set(discountModule.modules?.map((item) => item.module) || []),
+            ];
+            const moduleSelections = modules.filter((module) =>
                 uniqueModuleNames.includes(module.value)
             );
             setSelectedModules(moduleSelections);
             
+            // Extract selected types
+            const uniqueTypeNames = [
+                ...new Set(discountModule.modules?.map((item) => item.type) || []),
+            ];
+            const typeSelections = types.filter((t) =>
+                uniqueTypeNames.includes(t.value)
+            );
+            setSelectedTypes(typeSelections);
+            
             // Set branch modules combinations
-            const combinations = discountModule.modules.map((item, index) => ({
-                branch_id: item.branch_id,
-                branch_name: branches.find(b => b.value === item.branch_id)?.label || item.branch,
-                module: item.module,
-                module_name: modules.find(m => m.value === item.module)?.label || item.module
-            }));
-            setBranchModules(combinations);
+            updateBranchModules(branchSelections, moduleSelections, typeSelections);
         }
-    }, [dataDiscountItem, branches, modules]);
+    }, [dataDiscountItem, branches, modules, types]);
 
     // Navigate back after successful submission
     useEffect(() => {
@@ -121,26 +140,36 @@ const EditDiscountModule = () => {
     // Handle branch selection
     const handleBranchChange = (selectedOptions) => {
         setSelectedBranches(selectedOptions || []);
-        updateBranchModules(selectedOptions || [], selectedModules);
+        updateBranchModules(selectedOptions || [], selectedModules, selectedTypes);
     };
 
     // Handle module selection
     const handleModuleChange = (selectedOptions) => {
         setSelectedModules(selectedOptions || []);
-        updateBranchModules(selectedBranches, selectedOptions || []);
+        updateBranchModules(selectedBranches, selectedOptions || [], selectedTypes);
+    };
+
+    // Handle type selection
+    const handleTypeChange = (selectedOptions) => {
+        setSelectedTypes(selectedOptions || []);
+        updateBranchModules(selectedBranches, selectedModules, selectedOptions || []);
     };
 
     // Update branch modules combinations
-    const updateBranchModules = (branches, modules) => {
+    const updateBranchModules = (currentBranches, currentModules, currentTypes) => {
         const combinations = [];
         
-        branches.forEach(branch => {
-            modules.forEach(module => {
-                combinations.push({
-                    branch_id: branch.value,
-                    branch_name: branch.label,
-                    module: module.value,
-                    module_name: module.label
+        currentBranches.forEach((branch) => {
+            currentModules.forEach((module) => {
+                currentTypes.forEach((type) => {
+                    combinations.push({
+                        branch_id: branch.value,
+                        branch_name: branch.label,
+                        module: module.value,
+                        module_name: module.label,
+                        type: type.value,
+                        type_name: type.label,
+                    });
                 });
             });
         });
@@ -150,32 +179,38 @@ const EditDiscountModule = () => {
 
     // Reset form to original values
     const handleReset = () => {
-        if (dataDiscountItem && branches.length > 0 && modules.length > 0) {
+        if (dataDiscountItem && branches.length > 0 && modules.length > 0 && types.length > 0) {
             const discountModule = dataDiscountItem;
             
             setDiscount(discountModule.discount?.toString() || "");
             setStatus(discountModule.status || 0);
             
-            const uniqueBranchIds = [...new Set(discountModule.modules.map(item => item.branch_id))];
-            const uniqueModuleNames = [...new Set(discountModule.modules.map(item => item.module))];
-            
-            const branchSelections = branches.filter(branch => 
-                uniqueBranchIds.includes(branch.value)
+            const branchSelections = branches.filter((branch) =>
+                discountModule.modules?.some(
+                    (item) =>
+                        (item.branch_id !== undefined && item.branch_id !== null && Number(item.branch_id) === Number(branch.value)) ||
+                        (item.branch && item.branch.trim().toLowerCase() === branch.label.trim().toLowerCase())
+                )
             );
             setSelectedBranches(branchSelections);
             
-            const moduleSelections = modules.filter(module => 
+            const uniqueModuleNames = [
+                ...new Set(discountModule.modules?.map((item) => item.module) || []),
+            ];
+            const moduleSelections = modules.filter((module) =>
                 uniqueModuleNames.includes(module.value)
             );
             setSelectedModules(moduleSelections);
             
-            const combinations = discountModule.modules.map((item, index) => ({
-                branch_id: item.branch_id,
-                branch_name: branches.find(b => b.value === item.branch_id)?.label || item.branch,
-                module: item.module,
-                module_name: modules.find(m => m.value === item.module)?.label || item.module
-            }));
-            setBranchModules(combinations);
+            const uniqueTypeNames = [
+                ...new Set(discountModule.modules?.map((item) => item.type) || []),
+            ];
+            const typeSelections = types.filter((t) =>
+                uniqueTypeNames.includes(t.value)
+            );
+            setSelectedTypes(typeSelections);
+            
+            updateBranchModules(branchSelections, moduleSelections, typeSelections);
         }
     };
 
@@ -198,6 +233,11 @@ const EditDiscountModule = () => {
             return;
         }
 
+        if (selectedTypes.length === 0) {
+            auth.toastError(t("TypeRequired"));
+            return;
+        }
+
         const formData = new FormData();
         formData.append("discount", discount);
         formData.append("status", status);
@@ -206,6 +246,7 @@ const EditDiscountModule = () => {
         branchModules.forEach((item, index) => {
             formData.append(`branch_modules[${index}][branch_id]`, item.branch_id);
             formData.append(`branch_modules[${index}][module]`, item.module);
+            formData.append(`branch_modules[${index}][type]`, item.type);
         });
 
         postData(formData, t("Discount Module Updated Success"));
@@ -337,6 +378,23 @@ const EditDiscountModule = () => {
                                     value={selectedModules}
                                     onChange={handleModuleChange}
                                     placeholder={t("SelectModules")}
+                                    styles={customStyles}
+                                    isMulti
+                                    isSearchable
+                                    className="w-full"
+                                />
+                            </div>
+
+                            {/* Type Selection */}
+                            <div className="w-full flex flex-col items-start justify-center gap-y-1">
+                                <span className="text-xl font-TextFontRegular text-thirdColor">
+                                    {t("Types")}:
+                                </span>
+                                <Select
+                                    options={types}
+                                    value={selectedTypes}
+                                    onChange={handleTypeChange}
+                                    placeholder={t("SelectTypes")}
                                     styles={customStyles}
                                     isMulti
                                     isSearchable

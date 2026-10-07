@@ -29,10 +29,16 @@ const AddDiscountModule = () => {
 
     const [branches, setBranches] = useState([]);
     const [modules, setModules] = useState([]);
+    const [types, setTypes] = useState([
+        { value: "all", label: "ALL" },
+        { value: "app", label: "APP" },
+        { value: "web", label: "WEB" },
+    ]);
     const [discount, setDiscount] = useState("");
     const [status, setStatus] = useState(0);
     const [selectedBranches, setSelectedBranches] = useState([]);
     const [selectedModules, setSelectedModules] = useState([]);
+    const [selectedTypes, setSelectedTypes] = useState([]);
     const [branchModules, setBranchModules] = useState([]);
 
     // Fetch data on component mount
@@ -57,6 +63,13 @@ const AddDiscountModule = () => {
                 }));
                 setModules(moduleOptions);
             }
+            if (data.type && Array.isArray(data.type)) {
+                const typeOptions = data.type.map((t) => ({
+                    value: t,
+                    label: t.toUpperCase(),
+                }));
+                setTypes(typeOptions);
+            }
         }
     }, [data]);
 
@@ -75,26 +88,36 @@ const AddDiscountModule = () => {
     // Handle branch selection
     const handleBranchChange = (selectedOptions) => {
         setSelectedBranches(selectedOptions || []);
-        updateBranchModules(selectedOptions || [], selectedModules);
+        updateBranchModules(selectedOptions || [], selectedModules, selectedTypes);
     };
 
     // Handle module selection
     const handleModuleChange = (selectedOptions) => {
         setSelectedModules(selectedOptions || []);
-        updateBranchModules(selectedBranches, selectedOptions || []);
+        updateBranchModules(selectedBranches, selectedOptions || [], selectedTypes);
+    };
+
+    // Handle type selection
+    const handleTypeChange = (selectedOptions) => {
+        setSelectedTypes(selectedOptions || []);
+        updateBranchModules(selectedBranches, selectedModules, selectedOptions || []);
     };
 
     // Update branch modules combinations
-    const updateBranchModules = (branches, modules) => {
+    const updateBranchModules = (currentBranches, currentModules, currentTypes) => {
         const combinations = [];
         
-        branches.forEach(branch => {
-            modules.forEach(module => {
-                combinations.push({
-                    branch_id: branch.value,
-                    branch_name: branch.label,
-                    module: module.value,
-                    module_name: module.label
+        currentBranches.forEach(branch => {
+            currentModules.forEach(module => {
+                currentTypes.forEach(type => {
+                    combinations.push({
+                        branch_id: branch.value,
+                        branch_name: branch.label,
+                        module: module.value,
+                        module_name: module.label,
+                        type: type.value,
+                        type_name: type.label,
+                    });
                 });
             });
         });
@@ -107,6 +130,7 @@ const AddDiscountModule = () => {
         setDiscount("");
         setSelectedBranches([]);
         setSelectedModules([]);
+        setSelectedTypes([]);
         setBranchModules([]);
         setStatus(0);
     };
@@ -130,6 +154,11 @@ const AddDiscountModule = () => {
             return;
         }
 
+        if (selectedTypes.length === 0) {
+            auth.toastError(t("TypeRequired"));
+            return;
+        }
+
         const formData = new FormData();
         formData.append("discount", discount);
         formData.append("status", status);
@@ -138,6 +167,7 @@ const AddDiscountModule = () => {
         branchModules.forEach((item, index) => {
             formData.append(`branch_modules[${index}][branch_id]`, item.branch_id);
             formData.append(`branch_modules[${index}][module]`, item.module);
+            formData.append(`branch_modules[${index}][type]`, item.type);
         });
 
         postData(formData, t("Discount Module Added Success"));
@@ -269,6 +299,23 @@ const AddDiscountModule = () => {
                                     value={selectedModules}
                                     onChange={handleModuleChange}
                                     placeholder={t("SelectModules")}
+                                    styles={customStyles}
+                                    isMulti
+                                    isSearchable
+                                    className="w-full"
+                                />
+                            </div>
+
+                            {/* Type Selection */}
+                            <div className="w-full flex flex-col items-start justify-center gap-y-1">
+                                <span className="text-xl font-TextFontRegular text-thirdColor">
+                                    {t("Types")}:
+                                </span>
+                                <Select
+                                    options={types}
+                                    value={selectedTypes}
+                                    onChange={handleTypeChange}
+                                    placeholder={t("SelectTypes")}
                                     styles={customStyles}
                                     isMulti
                                     isSearchable

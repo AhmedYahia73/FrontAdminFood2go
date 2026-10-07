@@ -309,6 +309,9 @@ const DiscountModule = () => {
                                       <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                                         {t("Branch")}
                                       </th>
+                                      <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                                        {t("Type")}
+                                      </th>
                                     </tr>
                                   </thead>
                                   <tbody className="bg-white divide-y divide-gray-200">
@@ -322,12 +325,15 @@ const DiscountModule = () => {
                                           <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
                                             {module.branch || "-"}
                                           </td>
+                                          <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap uppercase">
+                                            {module.type || "-"}
+                                          </td>
                                         </tr>
                                       ))
                                     ) : (
                                       <tr>
                                         <td
-                                          colSpan="2"
+                                          colSpan="3"
                                           className="px-4 py-3 text-sm text-center text-gray-500"
                                         >
                                           {t("No modules and branches found")}
