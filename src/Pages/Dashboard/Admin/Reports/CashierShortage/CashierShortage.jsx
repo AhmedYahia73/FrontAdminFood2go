@@ -111,7 +111,8 @@ const CashierShortage = () => {
 
         const dataToExport = currentGaps.map((gap, index) => ({
             [t("No.")]: (currentPage - 1) * itemsPerPage + index + 1,
-            [t("Amount")]: gap.amount,
+            [t("Shortage")]: gap.amount,
+            [t("Cashier Amount")]: gap.cashier_amount ?? "-",
             [t("Cashier")]: gap.cashier,
             [t("Cashier Man")]: gap.cashier_man,
             [t("Date")]: gap.date,
@@ -191,7 +192,8 @@ const CashierShortage = () => {
                     <thead>
                         <tr>
                             <th>${t('No.')}</th>
-                            <th>${t('Amount')}</th>
+                            <th>${t('Shortage')}</th>
+                            <th>${t('Cashier Amount')}</th>
                             <th>${t('Cashier')}</th>
                             <th>${t('Date')}</th>
                         </tr>
@@ -201,6 +203,7 @@ const CashierShortage = () => {
                             <tr>
                                 <td>${(currentPage - 1) * itemsPerPage + index + 1}</td>
                                 <td>${gap.amount}</td>
+                                <td>${gap.cashier_amount ?? '-'}</td>
                                 <td>${gap.cashier}</td>
                                 <td>${gap.date}</td>
                             </tr>
@@ -334,7 +337,8 @@ const CashierShortage = () => {
                                 <thead className="bg-gray-100">
                                     <tr>
                                         <th className="px-4 py-3 text-sm font-semibold text-left text-gray-700">{t("No.")}</th>
-                                        <th className="px-4 py-3 text-sm font-semibold text-left text-gray-700">{t("Amount")}</th>
+                                        <th className="px-4 py-3 text-sm font-semibold text-left text-gray-700">{t("Shortage")}</th>
+                                        <th className="px-4 py-3 text-sm font-semibold text-left text-gray-700">{t("Cashier Amount")}</th>
                                         <th className="px-4 py-3 text-sm font-semibold text-left text-gray-700">{t("Cashier")}</th>
                                         <th className="px-4 py-3 text-sm font-semibold text-left text-gray-700">{t("Cashier Man")}</th>
                                         <th className="px-4 py-3 text-sm font-semibold text-left text-gray-700">{t("Date")}</th>
@@ -345,6 +349,7 @@ const CashierShortage = () => {
                                         <tr key={index} className="border-t hover:bg-gray-50">
                                             <td className="px-4 py-3 font-medium">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                                             <td className="px-4 py-3 text-red-600 font-bold">{gap.amount}</td>
+                                            <td className="px-4 py-3 text-blue-600 font-bold">{gap.cashier_amount ?? "-"}</td>
                                             <td className="px-4 py-3">{gap.cashier}</td>
                                             <td className="px-4 py-3">{gap.cashier_man}</td>
                                             <td className="px-4 py-3">{gap.date}</td>
