@@ -125,14 +125,20 @@ const EndShifts = () => {
                     },
                 }
             );
-            if (response.status === 200) {
+            if (response.status === 200 && !response.data?.errors) {
                 auth.toastSuccess(t("Shift closed successfully"));
                 handleCloseDialog();
                 refetch();
+            } else if (response.data?.errors) {
+                const errMsg = typeof response.data.errors === 'string'
+                    ? response.data.errors
+                    : Object.values(response.data.errors).flat().join(', ');
+                auth.toastError(errMsg || t("Failed to close shift"));
             }
         } catch (error) {
             console.error("Error closing shift:", error);
-            auth.toastError(t("Failed to close shift"));
+            const errMsg = error.response?.data?.errors;
+            auth.toastError(typeof errMsg === 'string' ? errMsg : t("Failed to close shift"));
         } finally {
             setSubmitting(false);
         }
