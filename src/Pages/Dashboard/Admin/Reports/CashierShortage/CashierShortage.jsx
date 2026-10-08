@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useGet } from "../../../../../Hooks/useGet";
 import { useTranslation } from "react-i18next";
 import Select from 'react-select';
@@ -7,10 +7,37 @@ import { FaFileExcel, FaPrint } from 'react-icons/fa';
 
 const CashierShortage = () => {
     const apiUrl = import.meta.env.VITE_API_BASE_URL;
-    const [reportUrl, setReportUrl] = useState(`${apiUrl}/admin/cashier_gap`);
+
+    // Filter states
+    const [selectedCashierId, setSelectedCashierId] = useState(null);
+    const [selectedCashierManId, setSelectedCashierManId] = useState(null);
+
+    // Applied filter states
+    const [appliedFilters, setAppliedFilters] = useState({
+        cashier_id: null,
+        cashier_man_id: null,
+    });
+
+    // Pagination states
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 20;
+
+    const { t } = useTranslation();
+
+    const apiParams = useMemo(() => {
+        const params = {
+            page: currentPage,
+            per_page: itemsPerPage,
+        };
+        if (appliedFilters.cashier_id) params.cashier_id = appliedFilters.cashier_id;
+        if (appliedFilters.cashier_man_id) params.cashier_man_id = appliedFilters.cashier_man_id;
+        return params;
+    }, [currentPage, appliedFilters, itemsPerPage]);
 
     const { refetch: refetchReport, loading: loadingReport, data: reportData } = useGet({
-        url: reportUrl
+        url: `${apiUrl}/admin/cashier_gap`,
+        params: apiParams,
+        queryKey: ["cashier_gap", currentPage, appliedFilters],
     });
 
     const { refetch: refetchList, loading: loadingList, data: dataList } = useGet({
@@ -20,25 +47,24 @@ const CashierShortage = () => {
     const [cashiers, setCashiers] = useState([]);
     const [cashierMen, setCashierMen] = useState([]);
 
-    // Filter states
-    const [selectedCashierId, setSelectedCashierId] = useState(null);
-    const [selectedCashierManId, setSelectedCashierManId] = useState(null);
+    // Extract gaps data (supports paginated response and flat array)
+    const gapsData = Array.isArray(reportData?.gaps)
+        ? reportData.gaps
+        : (reportData?.gaps?.data || reportData?.data || []);
 
-    // Pagination states
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 20;
-
-    const { t } = useTranslation();
-
-    // Extract gaps data
-    const gapsData = reportData?.gaps || [];
+    const isServerPaginated = Boolean(reportData?.gaps?.data || reportData?.pagination);
+    const paginationMeta = reportData?.pagination || (!Array.isArray(reportData?.gaps) ? reportData?.gaps : null);
 
     // Calculate pagination
-    const totalPages = Math.ceil(gapsData.length / itemsPerPage);
-    const currentGaps = gapsData.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    );
+    const totalPages = paginationMeta?.last_page || (Array.isArray(reportData?.gaps) ? Math.ceil(reportData.gaps.length / itemsPerPage) : 1);
+    const totalCount = paginationMeta?.total ?? gapsData.length;
+
+    const currentGaps = isServerPaginated
+        ? gapsData
+        : gapsData.slice(
+            (currentPage - 1) * itemsPerPage,
+            currentPage * itemsPerPage
+        );
 
     useEffect(() => {
         refetchList();
@@ -50,11 +76,6 @@ const CashierShortage = () => {
             setCashierMen(dataList.cashier_men || []);
         }
     }, [dataList]);
-
-    // Reset page when data changes
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [gapsData.length]);
 
     const prepareOptions = (data, labelKey = 'name') => {
         const options = data.map(item => ({
@@ -68,27 +89,28 @@ const CashierShortage = () => {
     const cashierManOptions = prepareOptions(cashierMen, 'user_name');
 
     const handleGenerateReport = () => {
-        let url = `${apiUrl}/admin/cashier_gap`;
-        const params = [];
-        if (selectedCashierId) params.push(`cashier_id=${selectedCashierId}`);
-        if (selectedCashierManId) params.push(`cashier_man_id=${selectedCashierManId}`);
-
-        if (params.length > 0) {
-            url += `?${params.join("&")}`;
-        }
-        setReportUrl(url);
+        setCurrentPage(1);
+        setAppliedFilters({
+            cashier_id: selectedCashierId,
+            cashier_man_id: selectedCashierManId,
+        });
     };
 
     const handleResetFilters = () => {
         setSelectedCashierId(null);
         setSelectedCashierManId(null);
+        setCurrentPage(1);
+        setAppliedFilters({
+            cashier_id: null,
+            cashier_man_id: null,
+        });
     };
 
     const handleExportExcel = () => {
-        if (!gapsData || gapsData.length === 0) return;
+        if (!currentGaps || currentGaps.length === 0) return;
 
-        const dataToExport = gapsData.map((gap, index) => ({
-            [t("No.")]: index + 1,
+        const dataToExport = currentGaps.map((gap, index) => ({
+            [t("No.")]: (currentPage - 1) * itemsPerPage + index + 1,
             [t("Amount")]: gap.amount,
             [t("Cashier")]: gap.cashier,
             [t("Cashier Man")]: gap.cashier_man,
@@ -103,7 +125,7 @@ const CashierShortage = () => {
     };
 
     const handlePrint = () => {
-        if (!gapsData || gapsData.length === 0) return;
+        if (!currentGaps || currentGaps.length === 0) return;
 
         const printWindow = window.open('', '_blank');
         const date = new Date().toLocaleDateString();
@@ -175,9 +197,9 @@ const CashierShortage = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        ${gapsData.map((gap, index) => `
+                        ${currentGaps.map((gap, index) => `
                             <tr>
-                                <td>${index + 1}</td>
+                                <td>${(currentPage - 1) * itemsPerPage + index + 1}</td>
                                 <td>${gap.amount}</td>
                                 <td>${gap.cashier}</td>
                                 <td>${gap.date}</td>
@@ -244,7 +266,7 @@ const CashierShortage = () => {
         <div className="w-full p-6 pb-32 space-y-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <h1 className="text-3xl font-bold text-mainColor">{t("Cashier Shortage")}</h1>
-                {gapsData && gapsData.length > 0 && (
+                {currentGaps && currentGaps.length > 0 && (
                     <div className="flex gap-2">
                         <button
                             onClick={handleExportExcel}
@@ -303,7 +325,7 @@ const CashierShortage = () => {
             {loadingReport && <p className="text-lg text-center text-gray-600">{t("Loading report...")}</p>}
 
             {/* Gaps Table */}
-            {gapsData && gapsData.length > 0 && (
+            {currentGaps && currentGaps.length > 0 && (
                 <div className="space-y-4">
                     <div className="overflow-hidden bg-white rounded-lg shadow">
                         <h2 className="p-4 text-xl font-bold text-white bg-mainColor">{t("Cashier Shortage Records")}</h2>
@@ -321,7 +343,7 @@ const CashierShortage = () => {
                                 <tbody>
                                     {currentGaps.map((gap, index) => (
                                         <tr key={index} className="border-t hover:bg-gray-50">
-                                            <td className="px-4 py-3 font-medium">{index + 1}</td>
+                                            <td className="px-4 py-3 font-medium">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                                             <td className="px-4 py-3 text-red-600 font-bold">{gap.amount}</td>
                                             <td className="px-4 py-3">{gap.cashier}</td>
                                             <td className="px-4 py-3">{gap.cashier_man}</td>
@@ -338,13 +360,13 @@ const CashierShortage = () => {
                         <div className="flex items-center justify-between px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm">
                             <div className="text-sm text-gray-700">
                                 {t("Showing")}{" "}
-                                <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span>
+                                <span className="font-medium">{totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span>
                                 {" to "}
                                 <span className="font-medium">
-                                    {Math.min(currentPage * itemsPerPage, gapsData.length)}
+                                    {Math.min(currentPage * itemsPerPage, totalCount)}
                                 </span>
                                 {" of "}
-                                <span className="font-medium">{gapsData.length}</span>
+                                <span className="font-medium">{totalCount}</span>
                                 {" results"}
                             </div>
 
@@ -392,7 +414,7 @@ const CashierShortage = () => {
                 </div>
             )}
 
-            {!loadingReport && (!gapsData || gapsData.length === 0) && (
+            {!loadingReport && (!currentGaps || currentGaps.length === 0) && (
                 <div className="py-20 text-center text-gray-500">
                     <p className="text-2xl">{t("No shortage records found")}</p>
                     <p>{t('Select filters and click "Generate Report"')}</p>
