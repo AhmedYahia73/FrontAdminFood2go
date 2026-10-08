@@ -47,24 +47,30 @@ const CashierShortage = () => {
     const [cashiers, setCashiers] = useState([]);
     const [cashierMen, setCashierMen] = useState([]);
 
-    // Extract gaps data (supports paginated response and flat array)
+    // Extract gaps data (supports paginated response, items array, and flat array)
     const gapsData = Array.isArray(reportData?.gaps)
         ? reportData.gaps
-        : (reportData?.gaps?.data || reportData?.data || []);
+        : Array.isArray(reportData?.gaps?.data)
+        ? reportData.gaps.data
+        : Array.isArray(reportData?.data)
+        ? reportData.data
+        : [];
 
-    const isServerPaginated = Boolean(reportData?.gaps?.data || reportData?.pagination);
+    const isServerPaginated = Boolean(reportData?.pagination || reportData?.gaps?.data);
     const paginationMeta = reportData?.pagination || (!Array.isArray(reportData?.gaps) ? reportData?.gaps : null);
 
     // Calculate pagination
-    const totalPages = paginationMeta?.last_page || (Array.isArray(reportData?.gaps) ? Math.ceil(reportData.gaps.length / itemsPerPage) : 1);
-    const totalCount = paginationMeta?.total ?? gapsData.length;
+    const totalPages = paginationMeta?.last_page || (Array.isArray(gapsData) ? Math.ceil(gapsData.length / itemsPerPage) : 1);
+    const totalCount = paginationMeta?.total ?? (Array.isArray(gapsData) ? gapsData.length : 0);
 
     const currentGaps = isServerPaginated
         ? gapsData
-        : gapsData.slice(
-            (currentPage - 1) * itemsPerPage,
-            currentPage * itemsPerPage
-        );
+        : (Array.isArray(gapsData)
+            ? gapsData.slice(
+                (currentPage - 1) * itemsPerPage,
+                currentPage * itemsPerPage
+            )
+            : []);
 
     useEffect(() => {
         refetchList();
@@ -78,6 +84,7 @@ const CashierShortage = () => {
     }, [dataList]);
 
     const prepareOptions = (data, labelKey = 'name') => {
+        if (!Array.isArray(data)) return [];
         const options = data.map(item => ({
             value: item.id,
             label: item[labelKey] || item.user_name || `ID: ${item.id}`
@@ -107,7 +114,7 @@ const CashierShortage = () => {
     };
 
     const handleExportExcel = () => {
-        if (!currentGaps || currentGaps.length === 0) return;
+        if (!Array.isArray(currentGaps) || currentGaps.length === 0) return;
 
         const dataToExport = currentGaps.map((gap, index) => ({
             [t("No.")]: (currentPage - 1) * itemsPerPage + index + 1,
@@ -126,7 +133,7 @@ const CashierShortage = () => {
     };
 
     const handlePrint = () => {
-        if (!currentGaps || currentGaps.length === 0) return;
+        if (!Array.isArray(currentGaps) || currentGaps.length === 0) return;
 
         const printWindow = window.open('', '_blank');
         const date = new Date().toLocaleDateString();
@@ -269,7 +276,7 @@ const CashierShortage = () => {
         <div className="w-full p-6 pb-32 space-y-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <h1 className="text-3xl font-bold text-mainColor">{t("Cashier Shortage")}</h1>
-                {currentGaps && currentGaps.length > 0 && (
+                {Array.isArray(currentGaps) && currentGaps.length > 0 && (
                     <div className="flex gap-2">
                         <button
                             onClick={handleExportExcel}
@@ -328,7 +335,7 @@ const CashierShortage = () => {
             {loadingReport && <p className="text-lg text-center text-gray-600">{t("Loading report...")}</p>}
 
             {/* Gaps Table */}
-            {currentGaps && currentGaps.length > 0 && (
+            {Array.isArray(currentGaps) && currentGaps.length > 0 && (
                 <div className="space-y-4">
                     <div className="overflow-hidden bg-white rounded-lg shadow">
                         <h2 className="p-4 text-xl font-bold text-white bg-mainColor">{t("Cashier Shortage Records")}</h2>
@@ -419,7 +426,7 @@ const CashierShortage = () => {
                 </div>
             )}
 
-            {!loadingReport && (!currentGaps || currentGaps.length === 0) && (
+            {!loadingReport && (!Array.isArray(currentGaps) || currentGaps.length === 0) && (
                 <div className="py-20 text-center text-gray-500">
                     <p className="text-2xl">{t("No shortage records found")}</p>
                     <p>{t('Select filters and click "Generate Report"')}</p>
