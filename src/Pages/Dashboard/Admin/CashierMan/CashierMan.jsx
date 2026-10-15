@@ -153,6 +153,7 @@ const CashierMan = () => {
     { key: "enter_amount", label: t("allowAmountEntry") },
     { key: "free_discount", label: t("Free Discount") },
     { key: "hall_orders", label: t("Hall Orders") },
+    { key: "can_avoid", label: t("Can Avoid") },
   ];
 
   return (

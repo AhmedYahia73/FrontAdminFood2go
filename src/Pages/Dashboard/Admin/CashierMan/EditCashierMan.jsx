@@ -59,6 +59,7 @@ const EditCashierMan = () => {
   const [enterAmount, setEnterAmount] = useState(0);
   const [freeDiscount, setFreeDiscount] = useState(0);
   const [hallOrders, setHallOrders] = useState(0);
+  const [canAvoid, setCanAvoid] = useState(0);
 
   // Role options for react-select
   const roleOptions = [
@@ -129,6 +130,7 @@ const EditCashierMan = () => {
       setEnterAmount(cashier.enter_amount || 0);
       setFreeDiscount(cashier.free_discount || 0);
       setHallOrders(cashier.hall_orders || 0);
+      setCanAvoid(cashier.can_avoid || 0);
       setExistingImage(cashier.image_link || null);
 
       // Set branch
@@ -176,6 +178,7 @@ const EditCashierMan = () => {
   const handleEnterAmount = () => setEnterAmount((prev) => (prev === 0 ? 1 : 0));
   const handleFreeDiscount = () => setFreeDiscount((prev) => (prev === 0 ? 1 : 0));
   const handleHallOrders = () => setHallOrders((prev) => (prev === 0 ? 1 : 0));
+  const handleCanAvoid = () => setCanAvoid((prev) => (prev === 0 ? 1 : 0));
 
   const handleReportPermission = (selectedOption) => {
     setSelectedReportPermission(selectedOption);
@@ -202,6 +205,7 @@ const EditCashierMan = () => {
       setEnterAmount(cashier.enter_amount || 0);
       setFreeDiscount(cashier.free_discount || 0);
       setHallOrders(cashier.hall_orders || 0);
+      setCanAvoid(cashier.can_avoid || 0);
       setImage(null);
       setExistingImage(cashier.image_link || null);
 
@@ -268,6 +272,7 @@ const EditCashierMan = () => {
     formData.append("enter_amount", enterAmount);
     formData.append("free_discount", freeDiscount);
     formData.append("hall_orders", hallOrders);
+    formData.append("can_avoid", canAvoid);
 
     // Append report permission if selected
     if (selectedReportPermission) {
@@ -589,6 +594,14 @@ const EditCashierMan = () => {
                   {t("Hall Orders")}:
                 </span>
                 <Switch handleClick={handleHallOrders} checked={hallOrders} />
+              </div>
+
+              {/* Can Avoid */}
+              <div className="flex items-start justify-start pt-8 gap-x-3">
+                <span className="text-xl font-TextFontRegular text-thirdColor">
+                  {t("Can Avoid")}:
+                </span>
+                <Switch handleClick={handleCanAvoid} checked={canAvoid} />
               </div>
             </div>
 

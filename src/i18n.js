@@ -1542,6 +1542,8 @@ const resources = {
                "Online Order": "Online Order",
                "Discount Perimission": "Discount Perimission",
                "Void Order": "Void Order",
+               "Hall Orders": "Hall Orders",
+               "Can Avoid": "Can Avoid",
 
                "MyId": "My Id",
                "BranchRequired": "Branch Required",
@@ -3066,6 +3068,8 @@ const resources = {
                "Online Order": "طلب عبر الإنترنت",
                "Discount Perimission": "صلاحية الخصم",
                "Void Order": "طلب ملغى",
+               "Hall Orders": "طلبات الصالة",
+               "Can Avoid": "إمكانية الإلغاء (Avoid)",
                "Shift Number": "رقم الوردية",
                "Report Permission": "صلاحية التقرير",
                "Take Away": "تيك أواي",

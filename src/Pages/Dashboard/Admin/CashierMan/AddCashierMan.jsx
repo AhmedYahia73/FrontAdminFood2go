@@ -52,6 +52,7 @@ const AddCashierMan = () => {
   const [enterAmount, setEnterAmount] = useState(0);
   const [freeDiscount, setFreeDiscount] = useState(0);
   const [hallOrders, setHallOrders] = useState(0);
+  const [canAvoid, setCanAvoid] = useState(0);
 
   // Role options for react-select
   const roleOptions = [
@@ -120,6 +121,7 @@ const AddCashierMan = () => {
   const handleEnterAmount = () => setEnterAmount((prev) => (prev === 0 ? 1 : 0));
   const handleFreeDiscount = () => setFreeDiscount((prev) => (prev === 0 ? 1 : 0));
   const handleHallOrders = () => setHallOrders((prev) => (prev === 0 ? 1 : 0));
+  const handleCanAvoid = () => setCanAvoid((prev) => (prev === 0 ? 1 : 0));
 
   // Reset form
   const handleReset = () => {
@@ -144,6 +146,7 @@ const AddCashierMan = () => {
     setEnterAmount(0);
     setFreeDiscount(0);
     setHallOrders(0);
+    setCanAvoid(0);
   };
 
   const handleReportPermission = (selectedOption) => {
@@ -195,6 +198,7 @@ const AddCashierMan = () => {
     formData.append("enter_amount", enterAmount);
     formData.append("free_discount", freeDiscount);
     formData.append("hall_orders", hallOrders);
+    formData.append("can_avoid", canAvoid);
 
     // Append roles if any selected
     selectedRoles.forEach((role, index) => {
@@ -506,6 +510,14 @@ const AddCashierMan = () => {
                   {t("Hall Orders")}:
                 </span>
                 <Switch handleClick={handleHallOrders} checked={hallOrders} />
+              </div>
+
+              {/* Can Avoid */}
+              <div className="flex items-start justify-start pt-8 gap-x-3">
+                <span className="text-xl font-TextFontRegular text-thirdColor">
+                  {t("Can Avoid")}:
+                </span>
+                <Switch handleClick={handleCanAvoid} checked={canAvoid} />
               </div>
             </div>
 
