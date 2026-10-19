@@ -22,7 +22,16 @@ const EndShiftModal = ({ gap, onClose }) => {
                 const token = localStorage.getItem('token') || sessionStorage.getItem('token');
                 const res = await axios.get(
                     `${apiUrl}/admin/cashier_gap/end_shift_report/${gap.id}`,
-                    { headers: { Authorization: `Bearer ${token}` } }
+                    {
+                        params: {
+                            cashier_man_id: gap.cashier_man_id,
+                            cashier_id: gap.cashier_id,
+                            cashier_amount: gap.cashier_amount,
+                            amount: gap.amount,
+                            date: gap.date
+                        },
+                        headers: { Authorization: `Bearer ${token}` }
+                    }
                 );
                 setReport(res.data);
             } catch (e) {

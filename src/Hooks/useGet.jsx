@@ -18,6 +18,20 @@ export const useGet = ({ url, params, queryKey, enabled = true, staleTime, gcTim
                 'Content-Type': 'multipart/form-data',
                 'Authorization': `Bearer ${token}`,
             },
+            transformResponse: [
+                (data) => {
+                    if (typeof data === 'string') {
+                        try {
+                            // Preserve 15+ digit integer IDs as strings to prevent JS float64 precision loss
+                            const safe = data.replace(/"(id|[^"]*_id)"\s*:\s*(\d{15,})/g, '"$1":"$2"');
+                            return JSON.parse(safe);
+                        } catch (e) {
+                            return JSON.parse(data);
+                        }
+                    }
+                    return data;
+                }
+            ]
         });
         return response.data;
     };
