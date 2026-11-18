@@ -13,30 +13,35 @@ const KpiCard = ({ title, value, icon: Icon, color }) => (
     </div>
 );
 
-const DashboardKpiCards = ({ kpis }) => {
+const DashboardKpiCards = ({ kpis = {} }) => {
+    const formatAmount = (val) => {
+        const num = Number(val || 0);
+        return isNaN(num) ? "0.00" : num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full mb-8">
             <KpiCard
                 title="Active Orders"
-                value={kpis.activeOrders}
+                value={kpis?.activeOrders ?? 0}
                 icon={IoBagHandle}
                 color="bg-blue-500"
             />
             <KpiCard
                 title="Active Amount"
-                value={`${kpis.activeAmount} EGP`}
+                value={`${formatAmount(kpis?.activeAmount)} EGP`}
                 icon={IoCash}
                 color="bg-green-500"
             />
             <KpiCard
                 title="Occupied Tables"
-                value={kpis.occupiedTables}
+                value={kpis?.occupiedTables ?? 0}
                 icon={IoCalendar}
                 color="bg-purple-500"
             />
             <KpiCard
                 title="Offline Cashiers"
-                value={kpis.offlineCashiers}
+                value={kpis?.offlineCashiers ?? 0}
                 icon={IoPeople}
                 color="bg-red-500"
             />

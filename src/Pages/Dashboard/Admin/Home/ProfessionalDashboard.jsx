@@ -92,7 +92,7 @@ const ProfessionalDashboard = ({ realData }) => {
                 <div className="xl:col-span-1">
                     <TopProductsBarChart
                         labels={data.topProducts.labels}
-                        values={data.topProducts.orders_count}
+                        values={data.topProducts.values?.length ? data.topProducts.values : data.topProducts.orders_count}
                     />
                 </div>
                 <div className="xl:col-span-1">
