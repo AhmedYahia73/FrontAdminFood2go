@@ -61,46 +61,79 @@ const HomePage = () => {
       .sort((a, b) => Number(b.total_amount) - Number(a.total_amount))
       .slice(0, 5);
 
-    // Extract unique hours across all hourly arrays
-    const allHoursStr = new Set();
-    [
-      ...(dataOverview.sales_hourly || []),
-      ...(dataOverview.payments_hourly || []),
-      ...(dataOverview.return_hourly || []),
-      ...(dataOverview.discount_hourly || []),
-      ...(dataOverview.order_types || []),
-    ].forEach(item => {
-      if (item.hour) allHoursStr.add(item.hour);
-    });
-    
-    const hourlyLabels = Array.from(allHoursStr);
+    const topFinancialArr = (dataOverview.top_financial || [])
+      .sort((a, b) => Number(b.total_amount) - Number(a.total_amount))
+      .slice(0, 5);
 
-    const formatTimeLabel = (fullLabel) => {
-        if (!fullLabel) return "";
-        const parts = fullLabel.split(' ');
-        if (parts.length >= 3) {
-            return `${parts[1]} ${parts[2]}`; // e.g. "12 PM"
-        }
-        return fullLabel;
-    };
-    const formattedHourlyLabels = hourlyLabels.map(formatTimeLabel);
+    // Timeline processing (from backend 24h timeline or fallback)
+    const timeline = dataOverview.hourly_timeline;
+    let timelineLabels = [];
+    let shortLabels = [];
+    let timelineOrders = [];
+    let timelineNetSales = [];
+    let timelineNetPayments = [];
+    let timelineReturns = [];
+    let timelineDiscounts = [];
+    let timelineDineIn = [];
+    let timelineDelivery = [];
+    let timelineTakeaway = [];
+    let timelineDriveThru = [];
 
-    const getHourlyVal = (arr, hour, field) => {
+    if (Array.isArray(timeline) && timeline.length > 0) {
+      timelineLabels = timeline.map(item => item.label);
+      shortLabels = timeline.map(item => item.short_label);
+      timelineOrders = timeline.map(item => Number(item.orders_count || 0));
+      timelineNetSales = timeline.map(item => Number(item.net_sales || 0));
+      timelineNetPayments = timeline.map(item => Number(item.net_payments || 0));
+      timelineReturns = timeline.map(item => Number(item.return_amount || 0));
+      timelineDiscounts = timeline.map(item => Number(item.discount_amount || 0));
+      timelineDineIn = timeline.map(item => Number(item.dine_in || 0));
+      timelineDelivery = timeline.map(item => Number(item.delivery || 0));
+      timelineTakeaway = timeline.map(item => Number(item.takeaway || 0));
+      timelineDriveThru = timeline.map(item => Number(item.drive_thru || 0));
+    } else {
+      // Fallback if hourly_timeline is not in response
+      const allHoursStr = new Set();
+      [
+        ...(dataOverview.sales_hourly || []),
+        ...(dataOverview.payments_hourly || []),
+        ...(dataOverview.return_hourly || []),
+        ...(dataOverview.discount_hourly || []),
+        ...(dataOverview.order_types || []),
+      ].forEach(item => {
+        if (item.hour) allHoursStr.add(item.hour);
+      });
+      const hourlyLabels = Array.from(allHoursStr);
+
+      const getHourlyVal = (arr, hour, field) => {
         if (!arr) return 0;
         const item = arr.find(x => x.hour === hour);
         return item ? Number(item[field] || 0) : 0;
-    };
+      };
 
-    const getHourlySum = (arr, hour, field) => {
+      const getHourlySum = (arr, hour, field) => {
         if (!arr) return 0;
         return arr.filter(x => x.hour === hour).reduce((sum, item) => sum + Number(item[field] || 0), 0);
-    };
+      };
 
-    const getOrderTypeCount = (arr, hour, type) => {
+      const getOrderTypeCount = (arr, hour, type) => {
         if (!arr) return 0;
         const item = arr.find(x => x.hour === hour && x.order_type === type);
         return item ? Number(item.order_count || 0) : 0;
-    };
+      };
+
+      timelineLabels = hourlyLabels;
+      shortLabels = hourlyLabels;
+      timelineOrders = hourlyLabels.map(h => getHourlySum(dataOverview.order_types, h, 'order_count'));
+      timelineNetSales = hourlyLabels.map(h => getHourlyVal(dataOverview.sales_hourly, h, 'total_amount'));
+      timelineNetPayments = hourlyLabels.map(h => getHourlyVal(dataOverview.payments_hourly || dataOverview.sales_hourly, h, 'total_amount'));
+      timelineReturns = hourlyLabels.map(h => getHourlyVal(dataOverview.return_hourly, h, 'total_amount'));
+      timelineDiscounts = hourlyLabels.map(h => getHourlyVal(dataOverview.discount_hourly, h, 'total_discount'));
+      timelineDineIn = hourlyLabels.map(h => getOrderTypeCount(dataOverview.order_types, h, 'dine_in'));
+      timelineDelivery = hourlyLabels.map(h => getOrderTypeCount(dataOverview.order_types, h, 'delivery'));
+      timelineTakeaway = hourlyLabels.map(h => getOrderTypeCount(dataOverview.order_types, h, 'take_away'));
+      timelineDriveThru = hourlyLabels.map(h => getOrderTypeCount(dataOverview.order_types, h, 'drive_thru'));
+    }
 
     const kpisData = dataOverview.kpis || {};
 
@@ -114,7 +147,7 @@ const HomePage = () => {
       },
       topProducts: dataOverview.top_product ? {
         labels: dataOverview.top_product.map(p => p.product?.name || `Product ${p.product_id}`),
-        values: dataOverview.top_product.map(p => Number(p.total_amount || p.total_sales || 0)),
+        values: dataOverview.top_product.map(p => Number(p.total_amount || 0)),
         orders_count: dataOverview.top_product.map(p => Number(p.total_sales || 0))
       } : { labels: [], values: [], orders_count: [] },
       topBranches: {
@@ -125,23 +158,28 @@ const HomePage = () => {
         labels: topPaymentsArr.map(p => p.payment_method?.name || t("Unknown")),
         values: topPaymentsArr.map(p => Number(p.total_amount || 0))
       },
+      topFinancial: {
+        labels: topFinancialArr.map(f => f.financials?.name || `Account ${f.financial_id}`),
+        values: topFinancialArr.map(f => Number(f.total_amount || 0))
+      },
       orderTypes: {
-        labels: formattedHourlyLabels,
-        dineIn: hourlyLabels.map(h => getOrderTypeCount(dataOverview.order_types, h, 'dine_in')),
-        delivery: hourlyLabels.map(h => getOrderTypeCount(dataOverview.order_types, h, 'delivery')),
-        takeaway: hourlyLabels.map(h => getOrderTypeCount(dataOverview.order_types, h, 'take_away')),
+        labels: timelineLabels,
+        dineIn: timelineDineIn,
+        delivery: timelineDelivery,
+        takeaway: timelineTakeaway,
+        driveThru: timelineDriveThru,
       },
       hourlySales: {
-        labels: formattedHourlyLabels,
-        orders: hourlyLabels.map(h => getHourlyVal(dataOverview.sales_hourly, h, 'total_amount'))
+        labels: shortLabels,
+        orders: timelineNetSales
       },
       timeSeries: {
-        labels: formattedHourlyLabels,
-        orders: hourlyLabels.map(h => getHourlySum(dataOverview.order_types, h, 'order_count')),
-        netSales: hourlyLabels.map(h => getHourlyVal(dataOverview.sales_hourly, h, 'total_amount')),
-        netPayments: hourlyLabels.map(h => getHourlyVal(dataOverview.payments_hourly || dataOverview.sales_hourly, h, 'total_amount')),
-        returns: hourlyLabels.map(h => getHourlyVal(dataOverview.return_hourly, h, 'total_amount')),
-        discounts: hourlyLabels.map(h => getHourlyVal(dataOverview.discount_hourly, h, 'total_discount')) 
+        labels: timelineLabels,
+        orders: timelineOrders,
+        netSales: timelineNetSales,
+        netPayments: timelineNetPayments,
+        returns: timelineReturns,
+        discounts: timelineDiscounts
       }
     };
   }, [dataOverview, t]);
