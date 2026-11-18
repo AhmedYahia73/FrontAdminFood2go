@@ -1,39 +1,27 @@
-import React, { useEffect, useState, useMemo } from "react";
-import CartsOrderSection from "../Orders/AllOrders/CartsOrderSection";
+import { useEffect, useState, useMemo } from "react";
 import { LoaderLogin } from "../../../../Components/Components";
 import { OrdersComponent } from "../../../../Store/CreateSlices";
 import { useGet } from "../../../../Hooks/useGet";
 import Chart from "./Charts/Chart";
 import FooterCard from "./FooterHome/FooterCard";
-import SelectDateRangeSection from "../Orders/SelectDateRangeSection";
-import { useSelector } from 'react-redux';
 import { useTranslation } from "react-i18next";
 
 import ProfessionalDashboard from "./ProfessionalDashboard";
 
 const HomePage = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   const apiUrl = import.meta.env.VITE_API_BASE_URL;
   const role = localStorage.getItem("role"); // "admin" or "branch"
 
   // ✅ New Unified Overview API (Consolidated, Accurate & High-Performance)
   const {
-    refetch: refetchOverview,
     loading: loadingOverview,
     data: dataOverview,
   } = useGet({
     url: role === "branch"
       ? `${apiUrl}/branch/home/overview`
       : `${apiUrl}/admin/home/overview`,
-  });
-
-  // Branch list for statistics/filter if needed
-  const {
-    refetch: refetchBranches,
-    data: dataBranches,
-  } = useGet({
-    url: `${apiUrl}/admin/order/branches`,
   });
 
   const [order_statistics, setOrder_statistics] = useState({});
